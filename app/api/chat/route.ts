@@ -1,5 +1,7 @@
 // Using Web standard Request to avoid build-time type coupling on next/server in some environments
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
     const { message, chatHistory } = await req.json()
@@ -26,13 +28,21 @@ export async function POST(req: Request) {
     console.log("[v0] Chat response status:", chatResponse.status)
     console.log("[v0] Chat response headers:", Object.fromEntries(chatResponse.headers.entries()))
 
+    // 1. 응답 본문을 text로 먼저 읽어서 변수에 저장합니다.
+    const responseText = await chatResponse.text();
+
+    // 2. 저장된 텍스트 전체를 로그로 출력합니다. 이제 내용이 보입니다.
+    console.log("✅ API가 실제로 받은 메시지 (Raw Text):", responseText);
+
     if (!chatResponse.ok) {
       const errorText = await chatResponse.text()
       console.log("[v0] Chat response error body:", errorText)
       throw new Error(`Chat request failed: ${chatResponse.status} - ${errorText}`)
     }
 
-    const { job_id } = await chatResponse.json()
+    // 3. 성공했다면, 저장해둔 텍스트를 JSON으로 파싱(변환)합니다.
+    const { job_id } = JSON.parse(responseText);
+    // const { job_id } = await chatResponse.json()
     console.log("[v0] Received job_id:", job_id)
 
     // Step 2: Poll status endpoint until job is complete
@@ -101,98 +111,72 @@ export async function POST(req: Request) {
   }
 }
 
+/**
+ * 외부 AI 서버의 응답을 프론트엔드 UI에 맞게 변환하는 함수.
+ * chatType에 따라 '장보기'와 '레시피' 응답을 분기하여 처리합니다.
+ */
 function transformExternalResponse(result: any) {
-  const answer: string = result?.answer ?? ""
-  let recipes: any[] = Array.isArray(result?.recipes) ? result.recipes : []
-  const chatType: string | undefined = typeof result?.chatType === "string" ? result.chatType : undefined
+  const answer: string = result?.answer ?? "AI의 답변입니다.";
+  const chatType: "cart" | "chat" | undefined = result?.chatType;
+  const originalRecipes: any[] = Array.isArray(result?.recipes) ? result.recipes : [];
 
-  // 우선순위: 서버가 명시한 chatType → 없으면 휴리스틱
-  let type: "recipe" | "cart" | "general" = "general"
-  if (chatType === "cart") {
-    type = "cart"
-  } else if (chatType === "chat") {
-    type = "recipe"
-  } else if (recipes.length > 0) {
-    type = "recipe"
-  } else if (/재료|장보기|쇼핑/.test(answer)) {
-    type = "cart"
-  }
+  // 1. 응답 타입 결정 (장보기 vs 레시피)
+  // 서버가 명시한 chatType을 최우선으로 존중합니다.
+  const type = chatType === "cart" ? "cart" : "recipe";
 
-  // 폴백: 최상위에 food_name/ingredients/recipe만 존재하는 경우 단일 레시피로 변환
-  if (recipes.length === 0 && (result?.food_name || result?.recipe || result?.steps)) {
-    recipes = [
-      {
-        source: result?.source || "text",
-        food_name: result?.food_name || "레시피",
-        ingredients: result?.ingredients || [],
-        recipe: Array.isArray(result?.recipe) ? result.recipe : Array.isArray(result?.steps) ? result.steps : [],
-      },
-    ]
-    type = "recipe"
-  }
+  // 2. 응답 타입에 따라 데이터를 다르게 처리
+  if (type === "cart") {
+    // =================================================================
+    // 🛒 장보기(cart) 타입일 경우의 처리
+    // =================================================================
+    // 서버가 보내준 원본 상품 데이터를 그대로 사용합니다.
+    // 추가적인 가공을 하지 않아 price, image_url 등이 보존됩니다.
+    console.log("[transform] 'cart' 타입으로 처리. 원본 데이터를 유지합니다.");
+    
+    return {
+      type: "cart" as const,
+      content: answer,
+      recipes: originalRecipes, // 서버에서 받은 원본 recipes 배열을 그대로 반환
+    };
 
-  // 레시피 화면용 변환 (chatType=chat 기준)
-  const transformedRecipes = recipes.map((recipe: any, index: number) => {
-    const foodName = recipe.food_name || recipe.title || `Recipe ${index + 1}`
-    const source = recipe.source || "text"
-    const rawIngredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : []
+  } else {
+    // =================================================================
+    // 📖 레시피(recipe) 타입일 경우의 처리
+    // =================================================================
+    // 기존 로직을 사용하여 레시피 탐색 화면에 맞는 형태로 데이터를 가공합니다.
+    console.log("[transform] 'recipe' 타입으로 처리. 데이터를 레시피 형식으로 변환합니다.");
 
-    const normalizedIngredients = rawIngredients.map((ing: any) => {
-      if (typeof ing === "string") {
-        return { name: ing, amount: "", unit: "", optional: false }
-      }
-      if (ing && typeof ing === "object") {
-        const name = ing.item || ing.name || ing.product_name || ""
-        const amount = ing.amount || ""
-        const unit = ing.unit || ""
-        return { name, amount, unit, optional: false }
-      }
-      return { name: "", amount: "", unit: "", optional: false }
-    })
+    const transformedRecipes = originalRecipes.map((recipe: any, index: number) => {
+      const foodName = recipe.food_name || recipe.title || `Recipe ${index + 1}`;
+      const source = recipe.source || "text";
+      const rawIngredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
 
-    const steps = Array.isArray(recipe.recipe) ? recipe.recipe : Array.isArray(recipe.steps) ? recipe.steps : []
+      const normalizedIngredients = rawIngredients.map((ing: any) => {
+        if (typeof ing === "string") {
+          return { item: ing, amount: "", unit: "" };
+        }
+        return {
+          item: ing.item || ing.name || ing.product_name || "",
+          amount: ing.amount || "",
+          unit: ing.unit || "",
+        };
+      });
+
+      return {
+        // 이 구조는 RecipeExplorationScreen에 맞게 유지됩니다.
+        id: `recipe_${Date.now()}_${index}`,
+        food_name: foodName,
+        source: source,
+        recipe: Array.isArray(recipe.recipe) ? recipe.recipe : Array.isArray(recipe.steps) ? recipe.steps : [],
+        ingredients: normalizedIngredients,
+        // 필요하다면 다른 레시피 관련 필드를 여기에 추가할 수 있습니다.
+      };
+    });
 
     return {
-      id: `recipe_${Date.now()}_${index}`,
-      name: foodName,
-      description: `${source === "video" ? "영상" : "텍스트"} 기반 레시피`,
-      prepTime: "준비 시간 미정",
-      cookTime: "조리 시간 미정",
-      servings: 1,
-      difficulty: "Medium" as const,
-      ingredients: normalizedIngredients,
-      instructions: steps,
-      tags: [source === "video" ? "영상레시피" : "텍스트레시피"],
-      image: `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(foodName)}`,
-    }
-  })
-
-  // 장보기 화면용 재료 추출
-  let cartIngredients: Array<{ name: string; amount: string; unit: string }> = []
-  if (type === "cart") {
-    const candidateList = recipes?.[0]?.ingredients
-    if (Array.isArray(candidateList)) {
-      cartIngredients = candidateList.map((ing: any) => ({
-        name: ing?.product_name || ing?.name || ing?.item || "",
-        amount: "",
-        unit: "",
-      }))
-    }
-  } else {
-    // 일반(recipe) 케이스에서는 모든 레시피 재료를 평탄화하여 전달
-    cartIngredients = recipes.flatMap((recipe: any) =>
-      (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((ing: any) => ({
-        name: typeof ing === "string" ? ing : ing?.item || ing?.name || "",
-        amount: typeof ing === "string" ? "" : ing?.amount || "",
-        unit: typeof ing === "string" ? "" : ing?.unit || "",
-      })),
-    )
-  }
-
-  return {
-    type,
-    content: answer,
-    recipes: transformedRecipes,
-    ingredients: cartIngredients,
+      type: "recipe" as const,
+      content: answer,
+      recipes: transformedRecipes,
+    };
   }
 }

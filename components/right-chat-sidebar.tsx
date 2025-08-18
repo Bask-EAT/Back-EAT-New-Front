@@ -8,12 +8,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { MessageSquare, Send, ChevronRight, ChevronLeft, ShoppingCart, ChefHat, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-interface ChatMessage {
-  role: "user" | "assistant"
-  content: string
-  timestamp: number
-}
+import type { ChatMessage } from "../src/types"
 
 interface RightChatSidebarProps {
   collapsed: boolean

@@ -6,19 +6,7 @@ import { useState } from "react"
 import { LeftSidebar } from "./left-sidebar"
 import { RightChatSidebar } from "./right-chat-sidebar"
 import { cn } from "@/lib/utils"
-
-interface ChatMessage {
-  role: "user" | "assistant"
-  content: string
-  timestamp: number
-}
-
-interface ChatSession {
-  id: string
-  title: string
-  messages: ChatMessage[]
-  lastUpdated: number
-}
+import type { ChatMessage, ChatSession } from "../src/types"
 
 interface MainLayoutProps {
   children: React.ReactNode

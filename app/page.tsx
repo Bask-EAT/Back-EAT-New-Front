@@ -6,58 +6,23 @@ import { WelcomeScreen } from "@/components/welcome-screen"
 import { RecipeExplorationScreen } from "@/components/recipe-exploration-screen"
 import { ShoppingListScreen } from "@/components/shopping-list-screen"
 import { useLocalStorage } from "@/hooks/use-local-storage"
+import type { ChatSession, ChatMessage, Recipe, Ingredient, Product } from "../src/types"
 
-interface ChatMessage {
-  role: "user" | "assistant"
-  content: string
-  timestamp: number
-}
 
-interface ChatSession {
-  id: string
-  title: string
-  messages: ChatMessage[]
-  lastUpdated: number
-}
-
-interface Recipe {
-  id: string
-  name: string
-  description: string
-  prepTime: string
-  cookTime: string
-  servings: number
-  difficulty: "Easy" | "Medium" | "Hard"
-  ingredients: Array<{
-    name: string
-    amount: string
-    unit: string
-    optional?: boolean
-  }>
-  instructions: string[]
-  tags: string[]
-  image?: string
-}
-
-interface AIResponse {
-  type: "recipe" | "cart" | "general"
-  content: string
-  recipes?: Recipe[]
-  ingredients?: Array<{ name: string; amount: string; unit: string }>
-}
 
 export default function HomePage() {
   const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart">("welcome")
   const [chatHistory, setChatHistory] = useLocalStorage<ChatSession[]>("recipe-ai-chat-history", [])
+  // 북마크는 이제 food_name과 같은 고유한 문자열을 저장해야 합니다.
   const [bookmarkedRecipes, setBookmarkedRecipes] = useLocalStorage<string[]>("recipe-ai-bookmarks", [])
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [currentMessages, setCurrentMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [currentRecipes, setCurrentRecipes] = useState<Recipe[]>([])
-  const [currentIngredients, setCurrentIngredients] = useState<Array<{ name: string; amount: string; unit: string }>>(
-    [],
-  )
-  const [cartItems, setCartItems] = useState<Array<{ name: string; amount: string; unit: string }>>([])
+  // const [currentIngredients, setCurrentIngredients] = useState<Array<{ name: string; amount: string; unit: string }>>(
+  //   [],
+  // )
+  const [currentCartData, setCurrentCartData] = useState<Recipe[]>([])
   const [error, setError] = useState<string | null>(null)
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
   const [lastSuggestions, setLastSuggestions] = useState<string[]>([])
@@ -80,21 +45,21 @@ export default function HomePage() {
       id: newChatId,
       title: "New Chat",
       messages: [],
-      lastUpdated: Date.now(),
+      lastUpdated: new Date(),
     }
     setChatHistory((prev) => [newChat, ...prev])
     setCurrentChatId(newChatId)
     setCurrentMessages([])
     setCurrentView("welcome")
     setCurrentRecipes([])
-    setCurrentIngredients([])
+    // setCurrentIngredients([])
     setCartItems([])
     setError(null)
   }
 
   const updateChatTitle = (messages: ChatMessage[]) => {
     if (messages.length > 0) {
-      const firstUserMessage = messages.find((m) => m.role === "user")
+      const firstUserMessage = messages.find((m) => m.type === "user")
       if (firstUserMessage) {
         const title = firstUserMessage.content.slice(0, 50) + (firstUserMessage.content.length > 50 ? "..." : "")
         return title
@@ -103,50 +68,50 @@ export default function HomePage() {
     return "New Chat"
   }
 
-  const parseAIResponse = (text: string): AIResponse => {
-    try {
-      const parsed = JSON.parse(text)
-      return parsed
-    } catch {
-      // If not valid JSON, try to extract recipe information from text
-      const recipeMatch = text.match(/recipe|cook|ingredient|preparation/i)
-      const cartMatch = text.match(/shopping|buy|store|ingredient|cart/i)
+  // const parseAIResponse = (text: string): AIResponse => {
+  //   try {
+  //     const parsed = JSON.parse(text)
+  //     return parsed
+  //   } catch {
+  //     // If not valid JSON, try to extract recipe information from text
+  //     const recipeMatch = text.match(/recipe|cook|ingredient|preparation/i)
+  //     const cartMatch = text.match(/shopping|buy|store|ingredient|cart/i)
 
-      if (recipeMatch && !cartMatch) {
-        // Try to extract basic recipe info from text
-        const lines = text.split("\n").filter((line) => line.trim())
-        const mockRecipe: Recipe = {
-          id: Date.now().toString(),
-          name: lines[0] || "AI Generated Recipe",
-          description: lines[1] || "A delicious recipe suggested by AI",
-          prepTime: "15 min",
-          cookTime: "30 min",
-          servings: 4,
-          difficulty: "Medium" as const,
-          ingredients: [],
-          instructions: lines.slice(2) || ["Follow the AI's instructions above"],
-          tags: ["AI Generated"],
-        }
+  //     if (recipeMatch && !cartMatch) {
+  //       // Try to extract basic recipe info from text
+  //       const lines = text.split("\n").filter((line) => line.trim())
+  //       const mockRecipe: Recipe = {
+  //         id: Date.now().toString(),
+  //         name: lines[0] || "AI Generated Recipe",
+  //         description: lines[1] || "A delicious recipe suggested by AI",
+  //         prepTime: "15 min",
+  //         cookTime: "30 min",
+  //         servings: 4,
+  //         difficulty: "Medium" as const,
+  //         ingredients: [],
+  //         instructions: lines.slice(2) || ["Follow the AI's instructions above"],
+  //         tags: ["AI Generated"],
+  //       }
 
-        return {
-          type: "recipe",
-          content: text,
-          recipes: [mockRecipe],
-        }
-      } else if (cartMatch) {
-        return {
-          type: "cart",
-          content: text,
-          ingredients: [],
-        }
-      }
+  //       return {
+  //         type: "recipe",
+  //         content: text,
+  //         recipes: [mockRecipe],
+  //       }
+  //     } else if (cartMatch) {
+  //       return {
+  //         type: "cart",
+  //         content: text,
+  //         ingredients: [],
+  //       }
+  //     }
 
-      return {
-        type: "general",
-        content: text,
-      }
-    }
-  }
+  //     return {
+  //       type: "general",
+  //       content: text,
+  //     }
+  //   }
+  // }
 
   const handleChatSubmit = async (message: string) => {
     if (!message.trim() || isLoading) return
@@ -163,13 +128,15 @@ export default function HomePage() {
 
     // Add user message
     const userMessage: ChatMessage = {
-      role: "user",
+      type: "user",
       content: message,
-      timestamp: Date.now(),
+      timestamp: new Date(),
+      chatType: "chat",
     }
-
+    
     const updatedMessages = [...currentMessages, userMessage]
     setCurrentMessages(updatedMessages)
+    console.log("------------ 사용자 메시지 추가됨. 현재 메시지 :", updatedMessages)
 
     try {
       // Call AI API
@@ -180,6 +147,7 @@ export default function HomePage() {
         }
         return message
       })()
+      console.log("------------- API로 보낼 메시지:", messageToSend)
 
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -188,25 +156,34 @@ export default function HomePage() {
         },
         body: JSON.stringify({
           message: messageToSend,
-          chatHistory: currentMessages,
+          chatHistory: currentMessages.map((msg) => ({ 
+            ...msg, 
+            timestamp: new Date(msg.timestamp).toISOString() 
+          })),
         }),
       })
+      console.log("------------- API 응답 상태:", response.status)
 
       if (!response.ok) {
-        throw new Error("Failed to get AI response")
+        throw new Error("AI 응답 가져오기 실패")
       }
 
-      const parsedResponse: AIResponse = await response.json()
+      const botMessagePayload: Omit<ChatMessage, "type" | "timestamp"> = await response.json()
+      console.log("-------------------AI 응답:", botMessagePayload)
+
 
       // Add AI response
       const assistantMessage: ChatMessage = {
-        role: "assistant",
-        content: parsedResponse.content,
-        timestamp: Date.now(),
+        type: "bot",
+        content: botMessagePayload.content,
+        recipes: botMessagePayload.recipes,
+        chatType: botMessagePayload.chatType,
+        timestamp: new Date(),
       }
 
       const finalMessages = [...updatedMessages, assistantMessage]
       setCurrentMessages(finalMessages)
+      console.log("------------- AI 메시지 추가됨. 최종 메시지:", finalMessages)
 
       // Update chat history
       const title = updateChatTitle(finalMessages)
@@ -214,44 +191,46 @@ export default function HomePage() {
         id: chatId,
         title,
         messages: finalMessages,
-        lastUpdated: Date.now(),
+        lastUpdated: new Date(),
       }
 
       setChatHistory((prev) => {
         const filtered = prev.filter((chat) => chat.id !== chatId)
         return [updatedChat, ...filtered]
       })
+      console.log("채팅 기록 업데이트됨:", updatedChat)
 
       // 후보 목록 추출/정리
-      const suggestions = extractNumberedSuggestions(parsedResponse.content)
-      setLastSuggestions(suggestions)
+      // const suggestions = extractNumberedSuggestions(botMessagePayload.content)
+      // setLastSuggestions(suggestions)
+      // console.log("추천 후보 추출:", suggestions)
 
-      // Set view and data based on AI response type
-      if (parsedResponse.type === "recipe") {
-        setCurrentView("recipe")
-        if (parsedResponse.recipes && parsedResponse.recipes.length > 0) {
-          setCurrentRecipes(parsedResponse.recipes)
-        }
-        // 레시피 응답이면 후보 초기화
-        setLastSuggestions([])
-      } else if (parsedResponse.type === "cart") {
+      if (botMessagePayload.chatType === "cart" || botMessagePayload.type === "cart") {
         setCurrentView("cart")
-        if (parsedResponse.ingredients && parsedResponse.ingredients.length > 0) {
-          setCurrentIngredients(parsedResponse.ingredients)
-          setCartItems(parsedResponse.ingredients)
-        }
+        console.log("응답 타입이 'cart'입니다. 뷰를 'cart'로 전환합니다.");
+        
+          if (botMessagePayload.recipes) {
+            setCurrentCartData(botMessagePayload.recipes);
+            console.log("Cart 데이터를 상태에 저장했습니다:", botMessagePayload.recipes);
+          }
+      } else if (botMessagePayload.recipes && botMessagePayload.recipes.length > 0) {
+        setCurrentView("recipe");
+        setCurrentRecipes(botMessagePayload.recipes);
+        setLastSuggestions([]);
+        console.log("응답 타입이 'recipe'입니다. 뷰를 'recipe'로 전환합니다.");
       }
     } catch (error) {
       console.error("Chat error:", error)
-      setError("Failed to get AI response. Please try again.")
+      setError("AI 응답 가져오기 실패. 다시 시도해주세요.")
 
       // Add error message
       const errorMessage: ChatMessage = {
-        role: "assistant",
-        content: "Sorry, I encountered an error. Please try again.",
-        timestamp: Date.now(),
+        type: "bot",
+        content: "죄송합니다, 오류가 발생했습니다. 다시 시도해주세요.",
+        timestamp: new Date(),
       }
       setCurrentMessages((prev) => [...prev, errorMessage])
+      console.log("에러 메시지가 채팅에 추가됨")
     } finally {
       setIsLoading(false)
     }
@@ -296,44 +275,43 @@ export default function HomePage() {
 
       // Determine view based on chat content
       if (chat.messages.length > 0) {
-        const lastAssistantMessage = chat.messages.filter((m) => m.role === "assistant").pop()
+        const lastBotMessage = [...chat.messages].reverse().find((m) => m.type === "bot")
 
-        if (lastAssistantMessage) {
-          const content = lastAssistantMessage.content.toLowerCase()
-          if (content.includes("recipe") || content.includes("cook")) {
-            setCurrentView("recipe")
-          } else if (content.includes("shopping") || content.includes("ingredient")) {
-            setCurrentView("cart")
-          } else {
-            setCurrentView("recipe") // Default
-          }
+        if (lastBotMessage) {
+          if(lastBotMessage.chatType === 'cart') {
+                setCurrentView("cart")
+            } else if (lastBotMessage.recipes && lastBotMessage.recipes.length > 0) {
+                setCurrentView("recipe")
+                setCurrentRecipes(lastBotMessage.recipes)
+            }
+             else {
+                setCurrentView("recipe")
+            }
         }
       }
     }
   }
 
-  const handleBookmarkToggle = (recipeId: string) => {
+  // 이 함수는 이제 recipe.id 대신 recipe.food_name 같은 고유한 값을 받아야 합니다.
+  const handleBookmarkToggle = (recipeIdentifier: string) => {
     setBookmarkedRecipes((prev) =>
-      prev.includes(recipeId) ? prev.filter((id) => id !== recipeId) : [...prev, recipeId],
+      prev.includes(recipeIdentifier) ? prev.filter((id) => id !== recipeIdentifier) : [...prev, recipeIdentifier],
     )
   }
 
-  const handleAddToCart = (ingredient: { name: string; amount: string; unit: string }) => {
+  const handleAddToCart = (ingredient: Ingredient) => {
     setCartItems((prev) => {
-      // Check if ingredient already exists, if so, don't add duplicate
-      const exists = prev.some((item) => item.name === ingredient.name)
+      const exists = prev.some((item) => item.item === ingredient.item)
       if (exists) return prev
       return [...prev, ingredient]
     })
-    // Switch to cart view when adding items
     setCurrentView("cart")
   }
 
-  const handleGenerateCart = async (selectedProducts: Array<{ ingredient: string; product: any }>) => {
+  const handleGenerateCart = async (selectedProducts: Array<{ ingredient: string; product: Product }>) => {
     try {
       setIsLoading(true)
 
-      // Call API to generate shopping cart
       const response = await fetch("/api/generate-cart", {
         method: "POST",
         headers: {
@@ -341,13 +319,13 @@ export default function HomePage() {
         },
         body: JSON.stringify({
           products: selectedProducts,
-          timestamp: Date.now(),
+          timestamp: new Date().toISOString(),
         }),
       })
 
       if (response.ok) {
         const result = await response.json()
-        console.log("Shopping cart generated:", result)
+        console.log("------- Shopping cart generated:", result)
 
         // Show success message
         const totalPrice = selectedProducts.reduce((sum, item) => sum + item.product.price, 0).toFixed(2)
@@ -415,7 +393,7 @@ export default function HomePage() {
           )}
           {currentView === "cart" && (
             <ShoppingListScreen
-              ingredients={cartItems}
+              cartData={currentCartData}
               onGenerateCart={handleGenerateCart}
               isRightSidebarOpen={!rightSidebarCollapsed}
             />

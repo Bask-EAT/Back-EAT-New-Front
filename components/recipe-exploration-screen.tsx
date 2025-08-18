@@ -7,26 +7,13 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { ChefHat, Bookmark, BookmarkCheck, ShoppingCart, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
+import type { Recipe } from "../src/types"
 
 interface IngredientItem {
   name: string
   amount: string
   unit: string
   optional?: boolean
-}
-
-interface Recipe {
-  id: string
-  name: string
-  description: string
-  prepTime: string
-  cookTime: string
-  servings: number
-  difficulty: "Easy" | "Medium" | "Hard" | string
-  ingredients: IngredientItem[]
-  instructions: string[]
-  tags: string[]
-  image?: string
 }
 
 interface RecipeExplorationScreenProps {
@@ -78,17 +65,17 @@ export function RecipeExplorationScreen({
                     )}
                     onClick={() => setSelectedRecipeIndex(index)}
                   >
-                    <span className="text-sm font-medium truncate flex-1">{recipe.name}</span>
+                    <span className="text-sm font-medium truncate flex-1">{recipe.food_name}</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="p-1 h-auto"
                       onClick={(e) => {
                         e.stopPropagation()
-                        onBookmarkToggle(recipe.id)
+                        onBookmarkToggle(recipe.food_name)
                       }}
                     >
-                      {bookmarkedRecipes.includes(recipe.id) ? (
+                      {bookmarkedRecipes.includes(recipe.food_name) ? (
                         <BookmarkCheck className="w-4 h-4 text-blue-600" />
                       ) : (
                         <Bookmark className="w-4 h-4" />
@@ -110,12 +97,12 @@ export function RecipeExplorationScreen({
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-3xl mb-2">{selectedRecipe.name}</CardTitle>
-                    <div className="flex items-center gap-2 mt-4">
+                    <CardTitle className="text-3xl mb-2">{selectedRecipe.food_name}</CardTitle>
+                    {/* <div className="flex items-center gap-2 mt-4">
                       {selectedRecipe.tags && selectedRecipe.tags.length > 0 && (
                         <Badge variant="outline" className="capitalize">{selectedRecipe.tags[0]}</Badge>
                       )}
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </CardHeader>
@@ -138,7 +125,7 @@ export function RecipeExplorationScreen({
                       >
                         <div className="flex-1">
                           <span className="font-medium">
-                            {ingredient.name}
+                            {ingredient.item}
                             {(ingredient.amount || ingredient.unit) && (
                               <span className="text-sm text-gray-500 ml-2">
                                 {ingredient.amount} {ingredient.unit}
@@ -149,7 +136,7 @@ export function RecipeExplorationScreen({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => onAddToCart({ name: ingredient.name, amount: ingredient.amount, unit: ingredient.unit })}
+                          onClick={() => onAddToCart({ name: ingredient.item, amount: ingredient.amount, unit: ingredient.unit })}
                           className="ml-2"
                         >
                           <Plus className="w-4 h-4 mr-1" />
@@ -163,11 +150,11 @@ export function RecipeExplorationScreen({
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Recipe Steps ({selectedRecipe.instructions.length})</CardTitle>
+                  <CardTitle>Recipe Steps ({selectedRecipe.recipe?.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {selectedRecipe.instructions.map((step, index) => (
+                    {selectedRecipe.recipe?.map((step, index) => (
                       <div key={index} className="flex gap-3">
                         <div className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
                           {index + 1}

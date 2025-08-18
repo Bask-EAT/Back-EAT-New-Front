@@ -7,131 +7,88 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { ShoppingCart, Check, ExternalLink, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
+import type { Product, Recipe } from "../src/types"
 
-interface Product {
-  id: string
-  name: string
-  price: number
-  image: string
-  brand?: string
-  size?: string 
-  rating?: number
-}
 
-interface IngredientWithProducts {
-  name: string
-  amount: string
-  unit: string
-  isActive: boolean
-  products: Product[]
-  selectedProductId?: string
-}
+// interface IngredientWithProducts {
+//   name: string
+//   amount: string
+//   unit: string
+//   isActive: boolean
+//   products: Product[]
+//   selectedProductId?: string
+// }
 
 interface ShoppingListScreenProps {
-  ingredients: Array<{ name: string; amount: string; unit: string }>
+  cartData: Recipe[] // ingredients 대신 cartData를 받습니다.
   onGenerateCart: (selectedProducts: Array<{ ingredient: string; product: Product }>) => void
   isRightSidebarOpen?: boolean
 }
 
-// Mock product data for demonstration
-const generateMockProducts = (ingredientName: string): Product[] => {
-  const baseProducts = [
-    {
-      id: `${ingredientName}-1`,
-      name: `Organic ${ingredientName}`,
-      price: Math.random() * 10 + 2,
-      image: `/placeholder.svg?height=120&width=120&query=${ingredientName}`,
-      brand: "Organic Valley",
-      size: "1 lb",
-      rating: 4.5,
-    },
-    {
-      id: `${ingredientName}-2`,
-      name: `Fresh ${ingredientName}`,
-      price: Math.random() * 8 + 1.5,
-      image: `/placeholder.svg?height=120&width=120&query=${ingredientName}`,
-      brand: "Fresh Market",
-      size: "1 lb",
-      rating: 4.2,
-    },
-    {
-      id: `${ingredientName}-3`,
-      name: `Premium ${ingredientName}`,
-      price: Math.random() * 15 + 3,
-      image: `/placeholder.svg?height=120&width=120&query=${ingredientName}`,
-      brand: "Premium Choice",
-      size: "1 lb",
-      rating: 4.8,
-    },
-    {
-      id: `${ingredientName}-4`,
-      name: `Value ${ingredientName}`,
-      price: Math.random() * 5 + 1,
-      image: `/placeholder.svg?height=120&width=120&query=${ingredientName}`,
-      brand: "Value Brand",
-      size: "1 lb",
-      rating: 3.9,
-    },
-  ]
-
-  return baseProducts.map((product) => ({
-    ...product,
-    price: Math.round(product.price * 100) / 100, // Round to 2 decimal places
-  }))
+// 컴포넌트 내부에서 사용할 데이터 구조 정의
+interface CartItemGroup {
+  ingredientName: string
+  products: Product[]
+  isActive: boolean
+  // 상품의 고유 ID로 product_address를 사용합니다.
+  selectedProductId?: string 
 }
 
+
 export function ShoppingListScreen({
-  ingredients = [],
+  cartData = [],
   onGenerateCart,
   isRightSidebarOpen = false,
 }: ShoppingListScreenProps) {
-  const [ingredientsWithProducts, setIngredientsWithProducts] = useState<IngredientWithProducts[]>([])
+  const [cartItemGroups, setCartItemGroups] = useState<CartItemGroup[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
 
   // Initialize ingredients with products
   useEffect(() => {
-    const initialIngredients: IngredientWithProducts[] = ingredients.map((ingredient) => ({
-      ...ingredient,
+    const initialGroups: CartItemGroup[] = cartData.map((recipeItem) => ({
+      ingredientName: recipeItem.food_name,
+      // recipeItem.ingredients가 Product 타입의 배열이라고 가정합니다.
+      products: recipeItem.ingredients as Product[],
       isActive: true,
-      products: generateMockProducts(ingredient.name),
       selectedProductId: undefined,
     }))
-    setIngredientsWithProducts(initialIngredients)
-  }, [ingredients])
+    setCartItemGroups(initialGroups)
+  }, [cartData])
 
   const toggleIngredientActive = (index: number) => {
-    setIngredientsWithProducts((prev) =>
-      prev.map((ingredient, i) =>
+    setCartItemGroups((prev) =>
+      prev.map((group, i) =>
         i === index
           ? {
-              ...ingredient,
-              isActive: !ingredient.isActive,
-              selectedProductId: !ingredient.isActive ? undefined : ingredient.selectedProductId,
+              ...group,
+              isActive: !group.isActive,
+              selectedProductId: !group.isActive ? undefined : group.selectedProductId,
             }
-          : ingredient,
+          : group,
       ),
     )
   }
 
-  const selectProduct = (ingredientIndex: number, productId: string) => {
-    setIngredientsWithProducts((prev) =>
-      prev.map((ingredient, i) =>
-        i === ingredientIndex
+  const selectProduct = (groupIndex: number, productId: string) => {
+    setCartItemGroups((prev) =>
+      prev.map((group, i) =>
+        i === groupIndex
           ? {
-              ...ingredient,
-              selectedProductId: ingredient.selectedProductId === productId ? undefined : productId,
+              ...group,
+              selectedProductId: group.selectedProductId === productId ? undefined : productId,
             }
-          : ingredient,
+          : group,
       ),
     )
   }
 
   const getSelectedProducts = () => {
-    return ingredientsWithProducts
-      .filter((ingredient) => ingredient.isActive && ingredient.selectedProductId)
-      .map((ingredient) => ({
-        ingredient: ingredient.name,
-        product: ingredient.products.find((p) => p.id === ingredient.selectedProductId)!,
+     return cartItemGroups
+      .filter((group) => group.isActive && group.selectedProductId)
+      .map((group) => ({
+        ingredient: group.ingredientName,
+        // product_address를 ID로 사용해서 선택된 상품을 찾습니다.
+        product: group.products.find((p) => p.product_address === group.selectedProductId)!,
       }))
   }
 
@@ -154,7 +111,7 @@ export function ShoppingListScreen({
     }
   }
 
-  if (ingredientsWithProducts.length === 0) {
+  if (cartItemGroups.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center text-gray-500">
@@ -192,7 +149,7 @@ export function ShoppingListScreen({
                       className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.product.name}</p>
+                        <p className="text-sm font-medium truncate">{item.product.product_name}</p>
                         <p className="text-xs text-gray-500">{item.ingredient}</p>
                       </div>
                       <div className="flex items-center gap-1 ml-2">
@@ -265,32 +222,32 @@ export function ShoppingListScreen({
       <div className={cn("flex-1 overflow-auto transition-all duration-300", isRightSidebarOpen ? "pr-96" : "pr-84")}>
         <div className="max-w-6xl mx-auto p-6">
           <div className="space-y-8">
-            {ingredientsWithProducts.map((ingredient, ingredientIndex) => (
-              <Card key={ingredientIndex} className={cn("transition-all", !ingredient.isActive && "opacity-50")}>
+            {cartItemGroups.map((group, groupIndex) => (
+              <Card key={groupIndex} className={cn("transition-all", !group.isActive && "opacity-50")}>
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
                     <button
-                      onClick={() => toggleIngredientActive(ingredientIndex)}
+                      onClick={() => toggleIngredientActive(groupIndex)}
                       className="flex items-center gap-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors"
                     >
                       <div
                         className={cn(
                           "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
-                          ingredient.isActive
+                          group.isActive
                             ? "bg-green-600 border-green-600 text-white"
                             : "border-gray-300 dark:border-gray-600",
                         )}
                       >
-                        {ingredient.isActive && <Check className="w-4 h-4" />}
+                        {group.isActive && <Check className="w-4 h-4" />}
                       </div>
                       <div>
-                        <CardTitle className="text-xl">{ingredient.name}</CardTitle>
-                        <p className="text-sm text-gray-500">
-                          {ingredient.amount} {ingredient.unit}
-                        </p>
+                        <CardTitle className="text-xl">{group.ingredientName}</CardTitle>
+                        {/* <p className="text-sm text-gray-500">
+                          {group.amount} {group.unit}
+                        </p> */}
                       </div>
                     </button>
-                    {!ingredient.isActive && (
+                    {!group.isActive && (
                       <Badge variant="outline" className="text-gray-500">
                         Disabled
                       </Badge>
@@ -298,41 +255,38 @@ export function ShoppingListScreen({
                   </div>
                 </CardHeader>
 
-                {ingredient.isActive && (
+                {group.isActive && (
                   <CardContent>
                     <ScrollArea className="w-full">
                       <div className="flex gap-4 pb-4" style={{ width: "max-content" }}>
-                        {ingredient.products.map((product) => (
+                        {group.products.map((product) => (
                           <div
-                            key={product.id}
+                            key={product.product_address}
                             className={cn(
                               "flex-shrink-0 w-64 p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md",
-                              ingredient.selectedProductId === product.id
+                              group.selectedProductId === product.product_address
                                 ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md"
                                 : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
                             )}
-                            onClick={() => selectProduct(ingredientIndex, product.id)}
+                            onClick={() => selectProduct(groupIndex, product.product_address)}
                           >
                             <div className="text-center">
                               <img
-                                src={product.image || "/placeholder.svg"}
-                                alt={product.name}
+                                src={product.image_url || "/placeholder.svg"}
+                                alt={product.product_name}
                                 className="w-24 h-24 object-cover rounded-lg mx-auto mb-3"
                               />
-                              <h4 className="font-medium text-sm mb-1 line-clamp-2">{product.name}</h4>
-                              {product.brand && <p className="text-xs text-gray-500 mb-1">{product.brand}</p>}
-                              {product.size && <p className="text-xs text-gray-500 mb-2">{product.size}</p>}
+                              <h4 className="font-medium text-sm mb-1 line-clamp-2">{product.product_name}</h4>
                               <div className="flex items-center justify-center gap-1 mb-2">
-                                <DollarSign className="w-4 h-4 text-green-600" />
-                                <span className="font-bold text-green-600">{product.price.toFixed(2)}</span>
+                                <span className="font-bold text-green-600">₩ {product.price}</span>
                               </div>
-                              {product.rating && (
+                              {/* {product.rating && (
                                 <div className="flex items-center justify-center gap-1">
                                   <span className="text-xs text-yellow-500">★</span>
                                   <span className="text-xs text-gray-500">{product.rating}</span>
                                 </div>
-                              )}
-                              {ingredient.selectedProductId === product.id && (
+                              )} */}
+                              {group.selectedProductId === product.product_address  && (
                                 <div className="mt-2">
                                   <Badge className="bg-blue-600 text-white">Selected</Badge>
                                 </div>
@@ -356,7 +310,7 @@ export function ShoppingListScreen({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {getSelectedProducts().length} of {ingredientsWithProducts.filter((i) => i.isActive).length} active
+                {getSelectedProducts().length} of {cartItemGroups.filter((i) => i.isActive).length} active
                 ingredients selected
               </p>
               <p className="text-lg font-semibold">Total: ${getTotalPrice().toFixed(2)}</p>

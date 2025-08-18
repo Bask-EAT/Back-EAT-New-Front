@@ -6,13 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { MessageSquarePlus, ChefHat, Menu, Bookmark, Moon, Sun, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
+import type { ChatSession } from "../src/types"
 
-interface ChatSession {
-  id: string
-  title: string
-  messages: any[]
-  lastUpdated: number
-}
 
 interface LeftSidebarProps {
   collapsed: boolean
@@ -39,8 +34,8 @@ export function LeftSidebar({
     setMounted(true)
   }, [])
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp)
+  const formatDate = (dateInput: Date | string) => {
+    const date = new Date(dateInput)
     const now = new Date()
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
 
