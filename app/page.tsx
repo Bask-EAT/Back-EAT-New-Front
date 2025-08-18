@@ -5,22 +5,30 @@ import { MainLayout } from "@/components/main-layout"
 import { WelcomeScreen } from "@/components/welcome-screen"
 import { RecipeExplorationScreen } from "@/components/recipe-exploration-screen"
 import { ShoppingListScreen } from "@/components/shopping-list-screen"
-import { useLocalStorage } from "@/hooks/use-local-storage"
-
-interface ChatMessage {
-  role: "user" | "assistant"
-  content: string
-  timestamp: number
-}
+import {
+  ChatMessage,
+  DBRecipe,
+  DBCartItem,
+  ChatRecord,
+  openChatDB,
+  getAllChatsDesc,
+  getAllBookmarkIds,
+  createChat,
+  appendMessage,
+  appendRecipes,
+  appendCartItems,
+  getChat,
+  toggleBookmark,
+} from "@/lib/chat-db"
 
 interface ChatSession {
-  id: string
+  id: number
   title: string
   messages: ChatMessage[]
   lastUpdated: number
 }
 
-interface Recipe {
+interface UIRecipe {
   id: string
   name: string
   description: string
@@ -42,18 +50,25 @@ interface Recipe {
 interface AIResponse {
   type: "recipe" | "cart" | "general"
   content: string
-  recipes?: Recipe[]
+  recipes?: UIRecipe[]
   ingredients?: Array<{ name: string; amount: string; unit: string }>
 }
 
+// 표준 백엔드 스키마 (chatType/content/recipes)
+interface ServiceHealth { intent: boolean; shopping: boolean; video: boolean; agent: boolean }
+interface Ingredient { item: string; amount: string; unit: string }
+interface Product { product_name: string; price: number; image_url: string; product_address: string }
+interface Recipe { source: "text" | "video" | "ingredient_search"; food_name: string; ingredients: (Ingredient | Product)[]; recipe: string[] }
+type ChatServiceResponse = { chatType: "chat" | "cart"; content: string; recipes: Recipe[] }
+
 export default function HomePage() {
   const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart">("welcome")
-  const [chatHistory, setChatHistory] = useLocalStorage<ChatSession[]>("recipe-ai-chat-history", [])
-  const [bookmarkedRecipes, setBookmarkedRecipes] = useLocalStorage<string[]>("recipe-ai-bookmarks", [])
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null)
+  const [chatHistory, setChatHistory] = useState<ChatSession[]>([])
+  const [bookmarkedRecipes, setBookmarkedRecipes] = useState<string[]>([])
+  const [currentChatId, setCurrentChatId] = useState<number | null>(null)
   const [currentMessages, setCurrentMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [currentRecipes, setCurrentRecipes] = useState<Recipe[]>([])
+  const [currentRecipes, setCurrentRecipes] = useState<UIRecipe[]>([])
   const [currentIngredients, setCurrentIngredients] = useState<Array<{ name: string; amount: string; unit: string }>>(
     [],
   )
@@ -62,33 +77,59 @@ export default function HomePage() {
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
   const [lastSuggestions, setLastSuggestions] = useState<string[]>([])
 
-  // Load current chat on mount
+  // 초기 로드: IndexedDB에서 최근 채팅 목록 로드
   useEffect(() => {
-    if (chatHistory.length > 0 && !currentChatId) {
-      const latestChat = chatHistory[0]
-      setCurrentChatId(latestChat.id)
-      setCurrentMessages(latestChat.messages)
-      if (latestChat.messages.length > 0) {
-        setCurrentView("recipe") // Default to recipe view if there are messages
+    let cancelled = false
+    const load = async () => {
+      try {
+        await openChatDB()
+        const chats = await getAllChatsDesc()
+        const bookmarks = await getAllBookmarkIds()
+        if (cancelled) return
+        const normalized: ChatSession[] = chats.map((c) => ({
+          id: c.id,
+          title: c.messages.find((m) => m.role === "user")?.content.slice(0, 50) || "New Chat",
+          messages: c.messages,
+          lastUpdated: c.messages[c.messages.length - 1]?.timestamp || c.timestamp,
+        }))
+        setChatHistory(normalized)
+        setBookmarkedRecipes(bookmarks)
+        // 과거 대화 자동 선택을 비활성화하여 이전 레시피가 자동 표시되지 않도록 함
+        // 사용자가 왼쪽 사이드바에서 채팅을 직접 선택하면 해당 대화가 로드됩니다.
+      } catch (e: any) {
+        console.error(e)
+        setError(e?.message || "IndexedDB 초기화 오류")
       }
     }
-  }, [chatHistory, currentChatId])
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleNewChat = () => {
-    const newChatId = Date.now().toString()
-    const newChat: ChatSession = {
-      id: newChatId,
-      title: "New Chat",
-      messages: [],
-      lastUpdated: Date.now(),
-    }
-    setChatHistory((prev) => [newChat, ...prev])
-    setCurrentChatId(newChatId)
+    ;(async () => {
+      try {
+        const newChatId = await createChat()
+        const newChat: ChatSession = {
+          id: newChatId,
+          title: "New Chat",
+          messages: [],
+          lastUpdated: newChatId,
+        }
+        setChatHistory((prev) => [newChat, ...prev])
+        setCurrentChatId(newChatId)
+      } catch (e: any) {
+        console.error(e)
+        setError(e?.message || "새 채팅 생성 실패")
+      }
+    })()
     setCurrentMessages([])
     setCurrentView("welcome")
     setCurrentRecipes([])
     setCurrentIngredients([])
     setCartItems([])
+    setLastSuggestions([])
     setError(null)
   }
 
@@ -115,7 +156,7 @@ export default function HomePage() {
       if (recipeMatch && !cartMatch) {
         // Try to extract basic recipe info from text
         const lines = text.split("\n").filter((line) => line.trim())
-        const mockRecipe: Recipe = {
+        const mockRecipe: UIRecipe = {
           id: Date.now().toString(),
           name: lines[0] || "AI Generated Recipe",
           description: lines[1] || "A delicious recipe suggested by AI",
@@ -157,8 +198,15 @@ export default function HomePage() {
     // Create new chat if none exists
     let chatId = currentChatId
     if (!chatId) {
-      chatId = Date.now().toString()
-      setCurrentChatId(chatId)
+      try {
+        chatId = await createChat()
+        setCurrentChatId(chatId)
+      } catch (e: any) {
+        console.error(e)
+        setError(e?.message || "채팅 생성 실패")
+        setIsLoading(false)
+        return
+      }
     }
 
     // Add user message
@@ -170,16 +218,28 @@ export default function HomePage() {
 
     const updatedMessages = [...currentMessages, userMessage]
     setCurrentMessages(updatedMessages)
+    try {
+      await appendMessage(chatId, userMessage)
+    } catch (e: any) {
+      console.error(e)
+      setError(e?.message || "메시지 저장 실패")
+    }
+    // 좌측 리스트의 최근 업데이트 시간/순서를 즉시 반영
+    setChatHistory((prev) => {
+      const others = prev.filter((c) => c.id !== chatId)
+      const me: ChatSession = {
+        id: chatId!,
+        title: updateChatTitle(updatedMessages),
+        messages: updatedMessages,
+        lastUpdated: Date.now(),
+      }
+      return [me, ...others]
+    })
 
     try {
       // Call AI API
-      const messageToSend = (() => {
-        if (isNumericSelection(message) && lastSuggestions.length > 0) {
-          const mapped = mapSelectionToDish(message, lastSuggestions)
-          if (mapped) return `${mapped} 레시피 알려줘`
-        }
-        return message
-      })()
+      // 숫자 선택은 서버(TextAgent)가 직전 추천목록으로 매핑합니다. 클라이언트에서는 원문 그대로 전달합니다.
+      const messageToSend = message
 
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -196,7 +256,103 @@ export default function HomePage() {
         throw new Error("Failed to get AI response")
       }
 
-      const parsedResponse: AIResponse = await response.json()
+      const raw = await response.json()
+
+      // 1) 표준 스키마(chatType/content/recipes) 우선 처리
+      if (raw && typeof raw === "object" && (raw as ChatServiceResponse).chatType) {
+        const service: ChatServiceResponse = raw as ChatServiceResponse
+
+        // 메시지 저장용 (content 없으면 레시피 타이틀로 대체)
+        const fallbackText = (() => {
+          const first = (service.recipes || [])[0]
+          const title = first?.food_name
+          return title ? `네. ${title} 레시피를 알려드릴게요.` : "요청하신 결과를 준비했어요."
+        })()
+        const assistantMessage: ChatMessage = {
+          role: "assistant",
+          content: (service.content && service.content.trim()) ? service.content : fallbackText,
+          timestamp: Date.now(),
+        }
+
+        const finalMessages = [...updatedMessages, assistantMessage]
+        setCurrentMessages(finalMessages)
+        try {
+          await appendMessage(chatId, assistantMessage)
+        } catch (e: any) {
+          console.error(e)
+          setError(e?.message || "응답 저장 실패")
+        }
+
+        // 표준 → UI 변환
+        const uiRecipes: UIRecipe[] = (service.recipes || []).map((r, index) => {
+          const foodName = r.food_name || `Recipe ${index + 1}`
+          const normalizedIngs = (Array.isArray(r.ingredients) ? r.ingredients : []).map((ing: any) => {
+            if (ing && typeof ing === "object" && (ing as any).product_name) {
+              return { name: (ing as Product).product_name || "", amount: "", unit: "", optional: false }
+            }
+            const ii = ing as Ingredient
+            return { name: ii?.item || "", amount: ii?.amount || "", unit: ii?.unit || "", optional: false }
+          })
+          const tag = r.source === "video" ? "영상레시피" : r.source === "ingredient_search" ? "상품" : "텍스트레시피"
+          return {
+            id: `recipe_${Date.now()}_${index}`,
+            name: foodName,
+            description: `${r.source === "video" ? "영상" : r.source === "ingredient_search" ? "상품" : "텍스트"} 기반 레시피`,
+            prepTime: "준비 시간 미정",
+            cookTime: "조리 시간 미정",
+            servings: 1,
+            difficulty: "Medium",
+            ingredients: normalizedIngs,
+            instructions: Array.isArray(r.recipe) ? r.recipe : [],
+            tags: [tag],
+            image: `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(foodName)}`,
+          }
+        })
+
+        // 좌측 리스트 갱신
+        const title = updateChatTitle(finalMessages)
+        const updatedChat: ChatSession = { id: chatId, title, messages: finalMessages, lastUpdated: Date.now() }
+        setChatHistory((prev) => {
+          const filtered = prev.filter((chat) => chat.id !== chatId)
+          return [updatedChat, ...filtered]
+        })
+
+        // 화면 상태 분기 및 저장
+        if (service.chatType === "chat") {
+          setCurrentView("recipe")
+          setCurrentRecipes(uiRecipes)
+          try {
+            await appendRecipes(chatId, uiRecipes as unknown as DBRecipe[])
+          } catch (e: any) {
+            console.error(e)
+            setError(e?.message || "레시피 저장 실패")
+          }
+          setLastSuggestions([])
+        } else {
+          setCurrentView("cart")
+          const cartList = (service.recipes || []).flatMap((r) =>
+            (Array.isArray(r.ingredients) ? r.ingredients : []).map((ing: any) => {
+              if (ing && typeof ing === "object" && (ing as any).product_name) {
+                return { name: (ing as Product).product_name || "", amount: "", unit: "" }
+              }
+              const ii = ing as Ingredient
+              return { name: ii?.item || "", amount: ii?.amount || "", unit: ii?.unit || "" }
+            }),
+          )
+          setCurrentIngredients(cartList)
+          setCartItems(cartList)
+          try {
+            await appendCartItems(chatId, cartList as unknown as DBCartItem[])
+          } catch (e: any) {
+            console.error(e)
+            setError(e?.message || "카트 저장 실패")
+          }
+        }
+        return
+      }
+
+      // 2) 구 스키마(AIResponse) 폴백 처리
+      const parsedResponse: AIResponse = raw
 
       // Add AI response
       const assistantMessage: ChatMessage = {
@@ -207,6 +363,12 @@ export default function HomePage() {
 
       const finalMessages = [...updatedMessages, assistantMessage]
       setCurrentMessages(finalMessages)
+      try {
+        await appendMessage(chatId, assistantMessage)
+      } catch (e: any) {
+        console.error(e)
+        setError(e?.message || "응답 저장 실패")
+      }
 
       // Update chat history
       const title = updateChatTitle(finalMessages)
@@ -222,7 +384,7 @@ export default function HomePage() {
         return [updatedChat, ...filtered]
       })
 
-      // 후보 목록 추출/정리
+      // 후보 목록 추출/정리 (순수 추천 응답에서만 의미가 있음)
       const suggestions = extractNumberedSuggestions(parsedResponse.content)
       setLastSuggestions(suggestions)
 
@@ -231,14 +393,26 @@ export default function HomePage() {
         setCurrentView("recipe")
         if (parsedResponse.recipes && parsedResponse.recipes.length > 0) {
           setCurrentRecipes(parsedResponse.recipes)
+          try {
+            await appendRecipes(chatId, parsedResponse.recipes as unknown as DBRecipe[])
+          } catch (e: any) {
+            console.error(e)
+            setError(e?.message || "레시피 저장 실패")
+          }
+          // 실제 레시피가 채워진 경우에만 후보 초기화
+          setLastSuggestions([])
         }
-        // 레시피 응답이면 후보 초기화
-        setLastSuggestions([])
       } else if (parsedResponse.type === "cart") {
         setCurrentView("cart")
         if (parsedResponse.ingredients && parsedResponse.ingredients.length > 0) {
           setCurrentIngredients(parsedResponse.ingredients)
           setCartItems(parsedResponse.ingredients)
+          try {
+            await appendCartItems(chatId, parsedResponse.ingredients as unknown as DBCartItem[])
+          } catch (e: any) {
+            console.error(e)
+            setError(e?.message || "카트 저장 실패")
+          }
         }
       }
     } catch (error) {
@@ -287,35 +461,67 @@ export default function HomePage() {
     return out
   }
 
-  const handleChatSelect = (chatId: string) => {
+  const handleChatSelect = (chatId: number) => {
     const chat = chatHistory.find((c) => c.id === chatId)
     if (chat) {
       setCurrentChatId(chatId)
       setCurrentMessages(chat.messages)
+      setLastSuggestions([])
+      // 다른 채팅의 레시피/카트가 비치지 않도록 즉시 초기화
+      setCurrentRecipes([])
+      setCurrentIngredients([])
+      setCartItems([])
+      setCurrentView("welcome")
       setError(null)
+      ;(async () => {
+        try {
+          const full = await getChat(chatId)
+          if (full) {
+            // 복원: 레시피와 카트
+            setCurrentRecipes((full.recipes || []) as unknown as UIRecipe[])
+            const items = (full.cartItems || []) as Array<{ name: string; amount: string; unit: string }>
+            setCurrentIngredients(items)
+            setCartItems(items)
+            // 컨텐츠 기반으로 뷰 결정
+            if ((full.recipes && full.recipes.length > 0)) {
+              setCurrentView("recipe")
+            } else if ((full.cartItems && full.cartItems.length > 0)) {
+              setCurrentView("cart")
+            }
+          }
+        } catch (e: any) {
+          console.error(e)
+          setError(e?.message || "채팅 불러오기 실패")
+        }
+      })()
 
-      // Determine view based on chat content
+      // 메시지 기반의 폴백 뷰 결정 (비동기 복원 전에 잠깐 필요한 경우)
       if (chat.messages.length > 0) {
         const lastAssistantMessage = chat.messages.filter((m) => m.role === "assistant").pop()
-
         if (lastAssistantMessage) {
           const content = lastAssistantMessage.content.toLowerCase()
-          if (content.includes("recipe") || content.includes("cook")) {
-            setCurrentView("recipe")
-          } else if (content.includes("shopping") || content.includes("ingredient")) {
-            setCurrentView("cart")
-          } else {
-            setCurrentView("recipe") // Default
-          }
+          if (content.includes("recipe") || content.includes("cook")) setCurrentView("recipe")
+          else if (content.includes("shopping") || content.includes("ingredient")) setCurrentView("cart")
         }
       }
     }
   }
 
   const handleBookmarkToggle = (recipeId: string) => {
-    setBookmarkedRecipes((prev) =>
-      prev.includes(recipeId) ? prev.filter((id) => id !== recipeId) : [...prev, recipeId],
-    )
+    // 현재 화면의 레시피 중 대상 찾기
+    const recipe = currentRecipes.find((r) => r.id === recipeId)
+    if (!recipe) return
+    ;(async () => {
+      try {
+        const toggled = await toggleBookmark(recipe as unknown as DBRecipe)
+        setBookmarkedRecipes((prev) =>
+          toggled ? [...new Set([...prev, recipeId])] : prev.filter((id) => id !== recipeId),
+        )
+      } catch (e: any) {
+        console.error(e)
+        setError(e?.message || "북마크 저장 실패")
+      }
+    })()
   }
 
   const handleAddToCart = (ingredient: { name: string; amount: string; unit: string }) => {
@@ -325,6 +531,16 @@ export default function HomePage() {
       if (exists) return prev
       return [...prev, ingredient]
     })
+    ;(async () => {
+      try {
+        if (currentChatId) {
+          await appendCartItems(currentChatId, [ingredient as unknown as DBCartItem])
+        }
+      } catch (e: any) {
+        console.error(e)
+        setError(e?.message || "카트 저장 실패")
+      }
+    })()
     // Switch to cart view when adding items
     setCurrentView("cart")
   }
