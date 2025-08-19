@@ -3,13 +3,25 @@
 export async function POST(req: Request) {
   try {
     const { message, chatHistory } = await req.json()
+    let sendMessage = message
+
+    for (let i = 0; i < chatHistory.length; i++) {
+      sendMessage += `\n${chatHistory[i].role}: ${chatHistory[i].content}`
+    }
+
+    sendMessage += `\nuser: ${message}`
+    
+    console.log("[v0] message:", message)
+    console.log("[v0] chatHistory:", chatHistory)
+
+
 
     // LLM-Agent의 intent_service 기본 포트(8001)에 맞춤. 필요시 환경변수로 오버라이드
     const env = (globalThis as any).process?.env || {}
     const AI_SERVER_URL = (env.AI_SERVER_URL || env.NEXT_PUBLIC_AI_SERVER_URL || "http://localhost:8001")
 
-    console.log("[v0] AI_SERVER_URL:", AI_SERVER_URL)
-    console.log("[v0] Sending message to external server:", message)
+    console.log("[v0] AI_SERVER_URL:", AI_SERVER_URL) 
+    console.log("[v0] Sending message to external server:", sendMessage)
     console.log("[v0] Full request URL:", `${AI_SERVER_URL}/chat`)
 
     // Step 1: Send chat request to external AI server
@@ -19,7 +31,7 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        message,
+        message: sendMessage,
       }),
     })
 
