@@ -138,25 +138,30 @@ export function RightChatSidebar({
                 </div>
               ) : (
                 <div className="space-y-4 pb-4">
-                  {messages.map((msg, index) => (
-                    <div
-                      key={index}
-                      className={cn(
-                        "p-3 rounded-lg max-w-[90%]",
-                        msg.role === "user" ? "bg-blue-600 text-white ml-auto" : "bg-gray-100 dark:bg-gray-700",
-                      )}
-                    >
-                      <div className="whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-h-[40vh]">{msg.content}</div>
+                  {messages.map((msg, index) => {
+                    const role = (msg as any).role ?? (msg as any).type
+                    const isUser = role === "user"
+                    const ts = typeof (msg as any).timestamp === "number" ? (msg as any).timestamp : new Date((msg as any).timestamp as any).getTime()
+                    return (
                       <div
+                        key={index}
                         className={cn(
-                          "text-xs mt-1 opacity-70",
-                          msg.role === "user" ? "text-blue-100" : "text-gray-500",
+                          "p-3 rounded-lg max-w-[90%]",
+                          isUser ? "bg-blue-600 text-white ml-auto" : "bg-gray-100 dark:bg-gray-700",
                         )}
                       >
-                        {formatTime(msg.timestamp)}
+                        <div className="whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-h-[40vh]">{msg.content}</div>
+                        <div
+                          className={cn(
+                            "text-xs mt-1 opacity-70",
+                            isUser ? "text-blue-100" : "text-gray-500",
+                          )}
+                        >
+                          {formatTime(ts)}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                   {isLoading && (
                     <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg max-w-[90%]">
                       <div className="flex items-center gap-2">

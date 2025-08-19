@@ -67,7 +67,7 @@ export function useChat() {
           id: newChatId,
           title: "New Chat",
           messages: [],
-          lastUpdated: new Date(),
+          lastUpdated: Date.now(),
         }
         setChatHistory((prev) => [newChat, ...prev])
         setCurrentChatId(newChatId)
@@ -110,9 +110,9 @@ export function useChat() {
 
     // Add user message
     const userMessage: ChatMessage = {
-      type: "user",
+      role: "user",
       content: message,
-      timestamp: new Date(),
+      timestamp: Date.now(),
       chatType: "chat",
     }
     
@@ -148,9 +148,10 @@ export function useChat() {
         },
         body: JSON.stringify({
           message: messageToSend,
-          chatHistory: currentMessages.map((msg) => ({ 
-            ...msg, 
-            timestamp: new Date(msg.timestamp).toISOString() 
+          chatHistory: currentMessages.map((msg) => ({
+            role: (msg as any).role ?? (msg as any).type,
+            content: msg.content,
+            timestamp: msg.timestamp,
           })),
         }),
       })
@@ -175,7 +176,7 @@ export function useChat() {
           return title ? `네. ${title} 레시피를 알려드릴게요.` : "요청하신 결과를 준비했어요."
         })()
         const assistantMessage: ChatMessage = {
-          role: "assistant",
+          role: "bot",
           content: (service.content && service.content.trim()) ? service.content : fallbackText,
           timestamp: Date.now(),
         }
@@ -263,11 +264,11 @@ export function useChat() {
 
       // Add AI response
       const assistantMessage: ChatMessage = {
-        type: "bot",
+        role: "bot",
         content: raw.content,
         recipes: raw.recipes,
         chatType: raw.chatType,
-        timestamp: new Date(),
+        timestamp: Date.now(),
       }
 
       const finalMessages = [...updatedMessages, assistantMessage]
@@ -286,7 +287,7 @@ export function useChat() {
         id: chatId,
         title,
         messages: finalMessages,
-        lastUpdated: new Date(),
+        lastUpdated: Date.now(),
       }
 
       setChatHistory((prev) => {
@@ -332,9 +333,9 @@ export function useChat() {
 
       // Add error message
       const errorMessage: ChatMessage = {
-        type: "bot",
+        role: "bot",
         content: "죄송합니다, 오류가 발생했습니다. 다시 시도해주세요.",
-        timestamp: new Date(),
+        timestamp: Date.now(),
       }
       setCurrentMessages((prev) => [...prev, errorMessage])
       console.log("에러 메시지가 채팅에 추가됨")
@@ -384,7 +385,7 @@ export function useChat() {
   
         // 메시지 기반의 폴백 뷰 결정 (비동기 복원 전에 잠깐 필요한 경우)
         if (chat.messages.length > 0) {
-          const lastAssistantMessage = chat.messages.filter((m) => m.role === "assistant").pop()
+          const lastAssistantMessage = chat.messages.filter((m: any) => (m.role ?? m.type) === "bot").pop()
           if (lastAssistantMessage) {
             const content = lastAssistantMessage.content.toLowerCase()
             if (content.includes("recipe") || content.includes("cook")) setCurrentView("recipe")

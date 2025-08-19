@@ -2,15 +2,15 @@ import type { ChatMessage } from "./types"
 
 // 메시지 배열을 받아 제목을 생성하는 순수 로직
 export const updateChatTitle = (messages: ChatMessage[]) => {
-    if (messages.length > 0) {
-      const firstUserMessage = messages.find((m) => m.type === "user")
-      if (firstUserMessage) {
-        const title = firstUserMessage.content.slice(0, 50) + (firstUserMessage.content.length > 50 ? "..." : "")
-        return title
-      }
+  if (messages.length > 0) {
+    const firstUserMessage = messages.find((m) => (m as any).role === "user" || (m as any).type === "user")
+    if (firstUserMessage) {
+      const title = firstUserMessage.content.slice(0, 50) + (firstUserMessage.content.length > 50 ? "..." : "")
+      return title
     }
-    return "New Chat"
   }
+  return "New Chat"
+}
 
 
 // 입력 문자열이 숫자인지 확인하는 로직.

@@ -19,7 +19,7 @@ export interface Recipe {
 }
 
 export interface ChatMessage {
-  type: "user" | "bot"
+  role: "user" | "bot"
   content: string
   recipes?: Recipe[]
   timestamp: Date

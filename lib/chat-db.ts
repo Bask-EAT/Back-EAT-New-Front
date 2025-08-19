@@ -1,7 +1,7 @@
 "use client"
 
 export type ChatMessage = {
-  role: "user" | "assistant"
+  role: "user" | "bot"
   content: string
   timestamp: number
 }

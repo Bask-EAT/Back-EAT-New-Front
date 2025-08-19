@@ -5,27 +5,44 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     const { message, chatHistory } = await req.json()
-    let sendMessage = message
+    let historyArray = []
 
-    for (let i = 0; i < chatHistory.length; i++) {
-      sendMessage += `\n${chatHistory[i].role}: ${chatHistory[i].content}`
+    // 과거 스키마(type)와 현재 스키마(role)를 모두 허용, role 매핑: bot -> assistant
+    for (let i = 0; i < (chatHistory?.length || 0); i++) {
+      const h = chatHistory[i] || {}
+      const rawRole = (h.role ?? h.type ?? "user") as string
+      const role = rawRole === "bot" ? "assistant" : rawRole
+      const content = h.content ?? ""
+      
+      // 빈 내용이 아닌 경우만 추가
+      if (content.trim()) {
+        historyArray.push({
+          role: role,
+          content: content
+        })
+      }
     }
-
-    sendMessage += `\nuser: ${message}`
+    
+    // 현재 사용자 입력을 히스토리에 추가
+    if (message && message.trim()) {
+      historyArray.push({
+        role: "user",
+        content: message
+      })
+    }
     
     console.log("[v0] message:", message)
     console.log("[v0] chatHistory:", chatHistory)
-
-
-
+    console.log("[v0] historyArray:", historyArray)
+    
     // LLM-Agent의 intent_service 기본 포트(8001)에 맞춤. 필요시 환경변수로 오버라이드
     const env = (globalThis as any).process?.env || {}
     const AI_SERVER_URL = (env.AI_SERVER_URL || env.NEXT_PUBLIC_AI_SERVER_URL || "http://localhost:8001")
-
+    
     console.log("[v0] AI_SERVER_URL:", AI_SERVER_URL) 
-    console.log("[v0] Sending message to external server:", sendMessage)
+    console.log("[v0] Sending historyArray to external server:", historyArray)
     console.log("[v0] Full request URL:", `${AI_SERVER_URL}/chat`)
-
+    
     // Step 1: Send chat request to external AI server
     const chatResponse = await fetch(`${AI_SERVER_URL}/chat`, {
       method: "POST",
@@ -33,7 +50,7 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        message: sendMessage,
+        chat_history: historyArray,
       }),
     })
 
@@ -102,8 +119,11 @@ export async function POST(req: Request) {
     }
 
     const jobResult = await pollStatus()
-    // 백엔드가 반환하는 표준 스키마(chatType/content/recipes)를 그대로 전달
-    return Response.json(jobResult.result)
+    // 표준화: content가 없으면 answer를 content로 매핑하여 프론트에 전달
+    const r = jobResult?.result || {}
+    const content = typeof r?.content === "string" && r.content.trim() ? r.content : (typeof r?.answer === "string" ? r.answer : "")
+    const normalized = { ...r, content }
+    return Response.json(normalized)
   } catch (error) {
     console.error("[v0] Chat API error:", error)
     return Response.json(
