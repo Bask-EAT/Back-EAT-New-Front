@@ -92,7 +92,11 @@ export async function getChat(id: number): Promise<ChatRecord | undefined> {
   const db = await openChatDB()
   const result = await new Promise<ChatRecord | undefined>((resolve, reject) => {
     const req = tx(db, "readonly").get(id)
-    req.onsuccess = () => resolve(req.result as ChatRecord | undefined)
+    req.onsuccess = () => {
+      // 🔽🔽🔽 디버깅 코드 추가 🔽🔽🔽
+      console.log(`[DB 디버그] getChat(${id}) 결과:`, req.result);
+      resolve(req.result as ChatRecord | undefined)
+    }
     req.onerror = () => reject(req.error)
   })
   db.close()
@@ -214,6 +218,8 @@ export async function appendMessage(chatId: number, message: ChatMessage): Promi
 
 export async function appendRecipes(chatId: number, recipes: DBRecipe[]): Promise<void> {
   if (!recipes || recipes.length === 0) return
+  // 🔽🔽🔽 디버깅 코드 추가 🔽🔽🔽
+  console.log(`🟩[DB 디버그] appendRecipes 호출됨 (chatId: ${chatId})`, recipes);
   const db = await openChatDB()
   const store = tx(db, "readwrite")
   const record = await new Promise<ChatRecord | undefined>((resolve, reject) => {
