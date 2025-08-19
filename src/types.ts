@@ -28,8 +28,34 @@ export interface ChatMessage {
 
 // ChatSession은 새로운 ChatMessage를 사용하도록 업데이트합니다.
 export interface ChatSession {
-  id: string
+  id: number
   title: string
   messages: ChatMessage[]
   lastUpdated: Date
+}
+
+export interface UIRecipe {
+  id: string
+  name: string
+  description: string
+  prepTime: string
+  cookTime: string
+  servings: number
+  difficulty: "Easy" | "Medium" | "Hard"
+  ingredients: Array<{
+    name: string
+    amount: string
+    unit: string
+    optional?: boolean
+  }>
+  instructions: string[]
+  tags: string[]
+  image?: string
+}
+
+export interface AIResponse {
+  type: "recipe" | "cart" | "general"
+  content: string
+  recipes?: UIRecipe[]
+  ingredients?: Array<{ name: string; amount: string; unit: string }>
 }

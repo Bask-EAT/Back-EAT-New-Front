@@ -123,7 +123,7 @@ export async function POST(req: Request) {
  * 외부 AI 서버의 응답을 프론트엔드 UI에 맞게 변환하는 함수.
  * chatType에 따라 '장보기'와 '레시피' 응답을 분기하여 처리합니다.
  */
-function transformExternalResponse(result: any) {
+export function transformExternalResponse(result: any) {
   const answer: string = result?.answer ?? "AI의 답변입니다.";
   const chatType: "cart" | "chat" | undefined = result?.chatType;
   const originalRecipes: any[] = Array.isArray(result?.recipes) ? result.recipes : [];

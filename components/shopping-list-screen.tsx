@@ -20,7 +20,7 @@ import type { Product, Recipe } from "../src/types"
 // }
 
 interface ShoppingListScreenProps {
-  cartData: Recipe[] // ingredients 대신 cartData를 받습니다.
+  cartItems: Recipe[]
   onGenerateCart: (selectedProducts: Array<{ ingredient: string; product: Product }>) => void
   isRightSidebarOpen?: boolean
 }
@@ -36,7 +36,7 @@ interface CartItemGroup {
 
 
 export function ShoppingListScreen({
-  cartData = [],
+  cartItems = [],
   onGenerateCart,
   isRightSidebarOpen = false,
 }: ShoppingListScreenProps) {
@@ -45,7 +45,7 @@ export function ShoppingListScreen({
 
   // Initialize ingredients with products
   useEffect(() => {
-    const initialGroups: CartItemGroup[] = cartData.map((recipeItem) => ({
+    const initialGroups: CartItemGroup[] = cartItems.map((recipeItem) => ({
       ingredientName: recipeItem.food_name,
       // recipeItem.ingredients가 Product 타입의 배열이라고 가정합니다.
       products: recipeItem.ingredients as Product[],
@@ -53,7 +53,7 @@ export function ShoppingListScreen({
       selectedProductId: undefined,
     }))
     setCartItemGroups(initialGroups)
-  }, [cartData])
+  }, [cartItems])
 
   const toggleIngredientActive = (index: number) => {
     setCartItemGroups((prev) =>
@@ -259,7 +259,7 @@ export function ShoppingListScreen({
                   <CardContent>
                     <ScrollArea className="w-full">
                       <div className="flex gap-4 pb-4" style={{ width: "max-content" }}>
-                        {group.products.map((product) => (
+                        {group.products?.map((product) => (
                           <div
                             key={product.product_address}
                             className={cn(
