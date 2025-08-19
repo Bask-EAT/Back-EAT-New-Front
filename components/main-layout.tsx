@@ -12,13 +12,13 @@ interface MainLayoutProps {
   children: React.ReactNode
   currentView: "welcome" | "recipe" | "cart"
   chatHistory: ChatSession[]
-  currentChatId: string | null
+  currentChatId: number | null
   currentMessages: ChatMessage[]
   isLoading: boolean
   rightSidebarCollapsed: boolean
   onNewChat: () => void
   onChatSubmit: (message: string) => void
-  onChatSelect: (chatId: string) => void
+  onChatSelect: (chatId: number) => void
   onViewChange: (view: "welcome" | "recipe" | "cart") => void
   onRightSidebarToggle: () => void
 }

@@ -8,14 +8,20 @@ import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
 import type { ChatSession } from "../src/types"
 
+interface ChatSession {
+  id: number
+  title: string
+  messages: any[]
+  lastUpdated: number
+}
 
 interface LeftSidebarProps {
   collapsed: boolean
   onToggle: () => void
   chatHistory: ChatSession[]
-  currentChatId: string | null
+  currentChatId: number | null
   onNewChat: () => void
-  onChatSelect: (chatId: string) => void
+  onChatSelect: (chatId: number) => void
 }
 
 export function LeftSidebar({

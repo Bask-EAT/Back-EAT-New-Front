@@ -5,13 +5,25 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     const { message, chatHistory } = await req.json()
+    let sendMessage = message
+
+    for (let i = 0; i < chatHistory.length; i++) {
+      sendMessage += `\n${chatHistory[i].role}: ${chatHistory[i].content}`
+    }
+
+    sendMessage += `\nuser: ${message}`
+    
+    console.log("[v0] message:", message)
+    console.log("[v0] chatHistory:", chatHistory)
+
+
 
     // LLM-Agent의 intent_service 기본 포트(8001)에 맞춤. 필요시 환경변수로 오버라이드
     const env = (globalThis as any).process?.env || {}
     const AI_SERVER_URL = (env.AI_SERVER_URL || env.NEXT_PUBLIC_AI_SERVER_URL || "http://localhost:8001")
 
-    console.log("[v0] AI_SERVER_URL:", AI_SERVER_URL)
-    console.log("[v0] Sending message to external server:", message)
+    console.log("[v0] AI_SERVER_URL:", AI_SERVER_URL) 
+    console.log("[v0] Sending message to external server:", sendMessage)
     console.log("[v0] Full request URL:", `${AI_SERVER_URL}/chat`)
 
     // Step 1: Send chat request to external AI server
@@ -21,7 +33,7 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        message,
+        message: sendMessage,
       }),
     })
 
@@ -90,12 +102,8 @@ export async function POST(req: Request) {
     }
 
     const jobResult = await pollStatus()
-
-    // Step 3: Transform external response to match frontend expectations
-    const transformedResponse = transformExternalResponse(jobResult.result)
-    console.log("[v0] Transformed response type:", transformedResponse.type)
-
-    return Response.json(transformedResponse)
+    // 백엔드가 반환하는 표준 스키마(chatType/content/recipes)를 그대로 전달
+    return Response.json(jobResult.result)
   } catch (error) {
     console.error("[v0] Chat API error:", error)
     return Response.json(
@@ -180,3 +188,4 @@ function transformExternalResponse(result: any) {
     };
   }
 }
+// 구 변환 로직 제거: 표준 스키마를 그대로 전달합니다.

@@ -52,7 +52,8 @@ export function RecipeExplorationScreen({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-48">
+            {/* 레시피 리스트 전용 스크롤 */}
+            <ScrollArea className="h-[calc(100vh-10rem)] pr-2">
               <div className="space-y-2">
                 {recipes.map((recipe, index) => (
                   <div
@@ -92,81 +93,83 @@ export function RecipeExplorationScreen({
       {/* Main Recipe Content */}
       <div className={cn("flex-1 p-6 transition-all duration-300", isRightSidebarOpen ? "pr-96" : "pr-84")}>
         {selectedRecipe ? (
-          <div className="max-w-4xl mx-auto">
-            <Card className="mb-6">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-3xl mb-2">{selectedRecipe.food_name}</CardTitle>
-                    {/* <div className="flex items-center gap-2 mt-4">
-                      {selectedRecipe.tags && selectedRecipe.tags.length > 0 && (
-                        <Badge variant="outline" className="capitalize">{selectedRecipe.tags[0]}</Badge>
-                      )}
-                    </div> */}
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
+          <ScrollArea className="h-[calc(100vh-2rem)] pr-2">
+            <div className="max-w-4xl mx-auto">
+              <Card className="mb-6">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ShoppingCart className="w-5 h-5" />
-                    Ingredients ({selectedRecipe.ingredients.length})
-                  </CardTitle>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-3xl mb-2">{selectedRecipe.name}</CardTitle>
+                      <div className="flex items-center gap-2 mt-4">
+                        {selectedRecipe.tags && selectedRecipe.tags.length > 0 && (
+                          <Badge variant="outline" className="capitalize">{selectedRecipe.tags[0]}</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {selectedRecipe.ingredients.map((ingredient, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <span className="font-medium">
-                            {ingredient.item}
-                            {(ingredient.amount || ingredient.unit) && (
-                              <span className="text-sm text-gray-500 ml-2">
-                                {ingredient.amount} {ingredient.unit}
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onAddToCart({ name: ingredient.item, amount: ingredient.amount, unit: ingredient.unit })}
-                          className="ml-2"
+              </Card>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShoppingCart className="w-5 h-5" />
+                      Ingredients ({selectedRecipe.ingredients.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {selectedRecipe.ingredients.map((ingredient, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                         >
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recipe Steps ({selectedRecipe.recipe?.length})</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {selectedRecipe.recipe?.map((step, index) => (
-                      <div key={index} className="flex gap-3">
-                        <div className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
-                          {index + 1}
+                          <div className="flex-1">
+                            <span className="font-medium">
+                              {ingredient.name}
+                              {(ingredient.amount || ingredient.unit) && (
+                                <span className="text-sm text-gray-500 ml-2">
+                                  {ingredient.amount} {ingredient.unit}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onAddToCart({ name: ingredient.name, amount: ingredient.amount, unit: ingredient.unit })}
+                            className="ml-2"
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add
+                          </Button>
                         </div>
-                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{step}</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recipe Steps ({selectedRecipe.instructions.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {selectedRecipe.instructions.map((step, index) => (
+                        <div key={index} className="flex gap-3">
+                          <div className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
+                            {index + 1}
+                          </div>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{step}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
-          </div>
+          </ScrollArea>
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center text-gray-500">

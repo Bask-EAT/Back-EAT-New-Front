@@ -57,8 +57,8 @@ export function RightChatSidebar({
   return (
     <div
       className={cn(
-        "fixed right-0 top-0 h-full bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 transition-all duration-300 z-40",
-        collapsed ? "w-12" : "w-80",
+        "fixed right-0 top-0 h-full bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 transition-all duration-300 z-40 overscroll-contain overflow-hidden",
+        collapsed ? "w-12" : "w-[30rem]", // 가로 영역 확장
       )}
     >
       {collapsed ? (
@@ -128,8 +128,9 @@ export function RightChatSidebar({
           </div>
 
           {/* Messages */}
-          <div className="flex-1 min-h-0 relative">
-            <ScrollArea className="absolute inset-0 p-4" ref={scrollAreaRef}>
+          <div className="flex-1 min-h-0">
+            {/* 스크롤 가능 메시지 뷰 (남은 높이를 꽉 채우고, 입력창과 겹치지 않도록 footer는 별도 영역) */}
+            <ScrollArea className="h-full p-4 overscroll-contain pr-2" ref={scrollAreaRef}>
               {messages.length === 0 ? (
                 <div className="text-center text-gray-500 mt-8">
                   <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -145,7 +146,7 @@ export function RightChatSidebar({
                         msg.role === "user" ? "bg-blue-600 text-white ml-auto" : "bg-gray-100 dark:bg-gray-700",
                       )}
                     >
-                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                      <div className="whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-h-[40vh]">{msg.content}</div>
                       <div
                         className={cn(
                           "text-xs mt-1 opacity-70",
