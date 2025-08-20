@@ -64,9 +64,8 @@ export async function POST(req: Request) {
     console.log("✅ API가 실제로 받은 메시지 (Raw Text):", responseText);
 
     if (!chatResponse.ok) {
-      const errorText = await chatResponse.text()
-      console.log("[v0] Chat response error body:", errorText)
-      throw new Error(`Chat request failed: ${chatResponse.status} - ${errorText}`)
+      console.log("[v0] Chat response error body:", responseText)
+      throw new Error(`Chat request failed: ${chatResponse.status} - ${responseText}`)
     }
 
     // 3. 성공했다면, 저장해둔 텍스트를 JSON으로 파싱(변환)합니다.
