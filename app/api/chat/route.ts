@@ -7,7 +7,8 @@ export async function POST(req: Request) {
     const { message, chatHistory } = await req.json()
     let historyArray = []
 
-    // 과거 스키마(type)와 현재 스키마(role)를 모두 허용, role 매핑: bot -> assistant
+    // 과거 스키마(type: "bot")와 현재 스키마(role: "bot")를 모두 LangChain 표준인 "assistant"로 변환하여 하위 호환성을 유지합니다.
+    // 새로운 프론트엔드에서 "assistant"를 직접 보내도 문제 없이 처리됩니다.
     for (let i = 0; i < (chatHistory?.length || 0); i++) {
       const h = chatHistory[i] || {}
       const rawRole = (h.role ?? h.type ?? "user") as string
