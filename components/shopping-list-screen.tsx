@@ -43,21 +43,35 @@ export function ShoppingListScreen({
   const [cartItemGroups, setCartItemGroups] = useState<CartItemGroup[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
 
-  // 초기 로드 시 cartItems가 변경되면 cartItemGroups를 업데이트합니다.
+  // cartItems prop이 변경될 때마다 최신 데이터로 cartItemGroups를 업데이트합니다.
   useEffect(() => {
-    const initialGroups: CartItemGroup[] = cartItems.map((recipeItem) => ({
-      ingredientName: recipeItem.food_name,
-      // recipeItem.ingredients가 Product 타입의 배열이라고 가정합니다.
-      products: recipeItem.ingredients as Product[],
-      isActive: true,
-      selectedProductId: undefined,
-    }))
+    // cartItems 배열이 비어있으면 아무것도 하지 않고 상태를 비웁니다.
+    if (!cartItems || cartItems.length === 0) {
+      setCartItemGroups([]);
+      return;
+    }
 
-    // 🔽 이 로그를 추가해주세요!
-    console.log("🛒 ShoppingListScreen: cartItems prop이 변경되어 cartItemGroups를 업데이트합니다.", initialGroups);
-    
+    // cartItems 배열의 '가장 마지막' 요소만 사용해서 최신 검색 결과를 반영합니다.
+    const latestRecipeItem = cartItems[cartItems.length - 1];
 
-    setCartItemGroups(initialGroups)
+    // 최신 데이터가 유효한지 확인합니다.
+    if (latestRecipeItem && latestRecipeItem.food_name && latestRecipeItem.ingredients) {
+        const newGroup: CartItemGroup = {
+            ingredientName: latestRecipeItem.food_name,
+            products: latestRecipeItem.ingredients as Product[],
+            isActive: true,
+            selectedProductId: undefined,
+        };
+
+      // 콘솔 로그를 통해 최신 그룹 하나만으로 업데이트되는 것을 확인할 수 있습니다.
+      console.log("🛒 ShoppingListScreen: 최신 cartItem으로 cartItemGroups를 업데이트합니다.", [newGroup]);
+      
+      // 항상 단 하나의 그룹을 가진 배열로 상태를 설정합니다.
+      setCartItemGroups([newGroup]);
+    } else {
+        // 유효하지 않은 데이터가 들어오면 상태를 비웁니다.
+        setCartItemGroups([]);
+    }
   }, [cartItems])
 
   // 토글 버튼 클릭 시 해당 재료 그룹의 활성 상태를 변경합니다.
@@ -246,7 +260,7 @@ export function ShoppingListScreen({
                               />
                               <h4 className="font-medium text-sm mb-1 line-clamp-2">{product.product_name}</h4>
                               <div className="flex items-center justify-center gap-1 mb-2">
-                                <span className="font-bold text-green-600">{product.price.toLocaleString()}원</span>
+                                <span className="font-bold text-green-600">{product.price?.toLocaleString()}원</span>
                               </div>
                               {group.selectedProductId === product.product_address  && (
                                 <div className="mt-2">
