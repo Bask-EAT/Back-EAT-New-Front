@@ -122,7 +122,7 @@ export default function HomePage() {
               <div className="flex items-center">
                 <span className="mr-2">⚠️</span>
                 <span>{error}</span>
-                <button onClick={() => setError(null)} className="ml-4 text-red-500 hover:text-red-700">
+                <button onClick={() => handleViewChange(currentView)} className="ml-4 text-red-500 hover:text-red-700">
                   ×
                 </button>
               </div>
@@ -138,7 +138,7 @@ export default function HomePage() {
               recipes={currentRecipes}
               bookmarkedRecipes={bookmarkedRecipes}
               onBookmarkToggle={handleBookmarkToggle}
-              onAddToCart={handleAddToCart}
+              onAddToCart={(ing) => handleAddToCart({ item: ing.name, amount: ing.amount, unit: ing.unit })}
               isRightSidebarOpen={!rightSidebarCollapsed}
             />
           )}

@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { ChefHat, Bookmark, BookmarkCheck, ShoppingCart, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Recipe } from "../src/types"
+import type { UIRecipe } from "../src/types"
 
 interface IngredientItem {
   name: string
@@ -17,7 +17,7 @@ interface IngredientItem {
 }
 
 interface RecipeExplorationScreenProps {
-  recipes: Recipe[]
+  recipes: UIRecipe[]
   bookmarkedRecipes: string[]
   onBookmarkToggle: (recipeId: string) => void
   onAddToCart: (ingredient: { name: string; amount: string; unit: string }) => void
@@ -66,17 +66,17 @@ export function RecipeExplorationScreen({
                     )}
                     onClick={() => setSelectedRecipeIndex(index)}
                   >
-                    <span className="text-sm font-medium truncate flex-1">{recipe.food_name}</span>
+                    <span className="text-sm font-medium truncate flex-1">{recipe.name}</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="p-1 h-auto"
                       onClick={(e) => {
                         e.stopPropagation()
-                        onBookmarkToggle(recipe.food_name)
+                        onBookmarkToggle(recipe.id)
                       }}
                     >
-                      {bookmarkedRecipes.includes(recipe.food_name) ? (
+                      {bookmarkedRecipes.includes(recipe.id) ? (
                         <BookmarkCheck className="w-4 h-4 text-blue-600" />
                       ) : (
                         <Bookmark className="w-4 h-4" />

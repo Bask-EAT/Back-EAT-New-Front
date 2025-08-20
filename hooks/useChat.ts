@@ -1,24 +1,33 @@
 import { useState, useEffect } from "react"
-import type { ChatSession, ChatMessage, UIRecipe, Recipe, Ingredient, Product, AIResponse } from "../src/types"
+import type { ChatSession as UIChatSession, ChatMessage as UIChatMessage, UIRecipe, Recipe, Ingredient, Product, AIResponse } from "../src/types"
 import {
   DBRecipe, DBCartItem,openChatDB, getAllChatsDesc, getAllBookmarkIds, createChat,
-  appendMessage, appendRecipes, appendCartItems, getChat, toggleBookmark
+  appendMessage, appendRecipes, appendCartItems, getChat, toggleBookmark, ChatMessage as DBChatMessage
 } from "@/lib/chat-db"
 import { updateChatTitle, extractNumberedSuggestions, mapSelectionToDish, isNumericSelection } from "@/src/chat"
+import { getOrCreateUserId, generateChatIdForUser } from "@/lib/utils"
+
+type ChatServiceResponse = {
+  chatType?: "chat" | "cart"
+  content?: string
+  recipes?: any[]
+}
 
 export function useChat() {
   const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart">("welcome")
-  const [chatHistory, setChatHistory] = useState<ChatSession[]>([])
+  const [chatHistory, setChatHistory] = useState<UIChatSession[]>([])
   const [bookmarkedRecipes, setBookmarkedRecipes] = useState<string[]>([])
   const [currentChatId, setCurrentChatId] = useState<number | null>(null)
-  const [currentMessages, setCurrentMessages] = useState<ChatMessage[]>([])
+  // 서버 전송용 해시 기반 Chat ID (UI/IndexedDB와 분리)
+  const [serverChatId, setServerChatId] = useState<string | null>(null)
+  const [currentMessages, setCurrentMessages] = useState<UIChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [currentRecipes, setCurrentRecipes] = useState<UIRecipe[]>([])
   const [currentIngredients, setCurrentIngredients] = useState<Array<{ name: string; amount: string; unit: string }>>(
     [],
   )
 //   const [currentCartData, setCurrentCartData] = useState<Recipe[]>([]) // 이 상태의 용도를 확인하고 필요하면 currentRecipes와 통합 고려
-  const [cartItems, setCartItems] = useState<Recipe[]>([])
+  const [cartItems, setCartItems] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
   const [lastSuggestions, setLastSuggestions] = useState<string[]>([])
   
@@ -35,11 +44,15 @@ export function useChat() {
         const chats = await getAllChatsDesc()
         const bookmarks = await getAllBookmarkIds()
         if (cancelled) return
-        const normalized: ChatSession[] = chats.map((c) => ({
+        const normalized: UIChatSession[] = chats.map((c) => ({
           id: c.id,
-          title: c.messages.find((m) => m.role === "user")?.content.slice(0, 50) || "New Chat",
-          messages: c.messages,
-          lastUpdated: c.messages[c.messages.length - 1]?.timestamp || c.timestamp,
+          title: (c.messages.find((m) => m.role === "user")?.content || "New Chat").slice(0, 50),
+          messages: (c.messages || []).map((m): UIChatMessage => ({
+            role: m.role,
+            content: m.content,
+            timestamp: new Date(m.timestamp),
+          })),
+          lastUpdated: new Date(c.messages[c.messages.length - 1]?.timestamp || c.timestamp),
         }))
         setChatHistory(normalized)
         setBookmarkedRecipes(bookmarks)
@@ -63,11 +76,11 @@ export function useChat() {
     ;(async () => {
       try {
         const newChatId = await createChat()
-        const newChat: ChatSession = {
+        const newChat: UIChatSession = {
           id: newChatId,
           title: "New Chat",
           messages: [],
-          lastUpdated: Date.now(),
+          lastUpdated: new Date(),
         }
         setChatHistory((prev) => [newChat, ...prev])
         setCurrentChatId(newChatId)
@@ -83,6 +96,8 @@ export function useChat() {
     setCartItems([])
     setLastSuggestions([])
     setError(null)
+    // 새 대화 시작 시 서버용 chat_id 초기화
+    setServerChatId(null)
   }
 
 
@@ -94,17 +109,17 @@ export function useChat() {
     setIsLoading(true);
     setError(null);
 
-    // 1. 채팅 ID 준비 (없으면 새로 생성)
+    // 1-a. 로컬 IndexedDB용 채팅 ID 준비 (없으면 새로 생성)
     let chatId = currentChatId;
     if (!chatId) {
       try {
         chatId = await createChat();
         setCurrentChatId(chatId);
-        const newChat: ChatSession = {
+        const newChat: UIChatSession = {
           id: chatId,
           title: "New Chat",
           messages: [],
-          lastUpdated: Date.now(),
+          lastUpdated: new Date(),
         };
         setChatHistory((prev) => [newChat, ...prev]);
       } catch (e: any) {
@@ -115,19 +130,33 @@ export function useChat() {
       }
     }
 
+    // 1-b. 서버 전송용 해시 기반 chat_id 준비 (최초 1회 생성)
+    let effectiveServerChatId = serverChatId
+    try {
+      if (!effectiveServerChatId) {
+        const userId = getOrCreateUserId()
+        const newServerId = await generateChatIdForUser(userId)
+        setServerChatId(newServerId)
+        effectiveServerChatId = newServerId
+      }
+    } catch (e) {
+      console.error(e)
+      // 서버 chat_id 생성 실패해도 전송은 진행 (백엔드가 무시 가능)
+    }
+
     // 2. 사용자 메시지 UI에 먼저 표시하고 DB에 저장
-    const userMessage: ChatMessage = {
+    const userMessage: UIChatMessage = {
       role: "user",
       content: message,
-      timestamp: Date.now(),
-      chatType: "chat",
+      timestamp: new Date(),
     };
     
-    const updatedMessages = [...currentMessages, userMessage];
+    const updatedMessages: UIChatMessage[] = [...currentMessages, userMessage];
     setCurrentMessages(updatedMessages);
 
     try {
-      await appendMessage(chatId, userMessage);
+      const dbMessage: DBChatMessage = { role: userMessage.role as any, content: userMessage.content, timestamp: userMessage.timestamp.getTime() }
+      await appendMessage(chatId, dbMessage);
     } catch (e: any) {
       console.error(e);
       setError(e?.message || "메시지 저장 실패");
@@ -135,28 +164,24 @@ export function useChat() {
 
     // 좌측 채팅 목록에도 즉시 반영
     setChatHistory((prev) => {
-      const me = {
+      const me: UIChatSession = {
         id: chatId!,
         title: updateChatTitle(updatedMessages),
         messages: updatedMessages,
-        lastUpdated: Date.now(),
+        lastUpdated: new Date(),
       };
       const others = prev.filter((c) => c.id !== chatId);
       return [me, ...others];
     });
 
-    // 3. AI 서버에 요청
+    // 3. AI 서버에 요청 (사용자 메시지만 전송, 히스토리 미포함)
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: message,
-          chatHistory: updatedMessages.map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-            timestamp: new Date(msg.timestamp).toISOString(),
-          })),
+          chat_id: effectiveServerChatId,
         }),
       });
 
@@ -168,7 +193,7 @@ export function useChat() {
       console.log("-------------------AI 응답:", raw);
 
       // 4. AI 응답 처리 (스키마 분기)
-      let assistantMessage: ChatMessage;
+      let assistantMessage: UIChatMessage;
 
       // --- 4-1. 새로운 표준 스키마 처리 ---
       if (raw && typeof raw === "object" && (raw as ChatServiceResponse).chatType) {
@@ -180,14 +205,14 @@ export function useChat() {
         })();
 
         assistantMessage = {
-          role: "assistant",
+          role: "bot",
           content: (service.content && service.content.trim()) ? service.content : fallbackText,
-          timestamp: Date.now(),
+          timestamp: new Date(),
         };
         
         // 표준 스키마에 따른 UI 업데이트
         if (service.chatType === "chat" && service.recipes) {
-            const uiRecipes: UIRecipe[] = service.recipes.map((r, index) => ({
+            const uiRecipes: UIRecipe[] = service.recipes.map((r: any, index: number) => ({
               id: `recipe_${Date.now()}_${index}`,
               name: r.food_name || `Recipe ${index + 1}`,
               description: `${r.source === "video" ? "영상" : r.source === "ingredient_search" ? "상품" : "텍스트"} 기반 레시피`,
@@ -195,7 +220,7 @@ export function useChat() {
               cookTime: "조리 시간 미정",
               servings: 1,
               difficulty: "Medium",
-              ingredients: (Array.isArray(r.ingredients) ? r.ingredients : []).map(ing => ({
+              ingredients: (Array.isArray(r.ingredients) ? r.ingredients : []).map((ing: any) => ({
                 name: (ing as Product).product_name || (ing as Ingredient).item || "",
                 amount: (ing as Ingredient).amount || "",
                 unit: (ing as Ingredient).unit || "",
@@ -218,11 +243,9 @@ export function useChat() {
       } else {
         const parsedResponse: AIResponse = raw;
         assistantMessage = {
-          role: "assistant",
+          role: "bot",
           content: parsedResponse.content,
-          recipes: parsedResponse.recipes,
-          chatType: parsedResponse.type,
-          timestamp: Date.now(),
+          timestamp: new Date(),
         };
 
         // 이전 스키마에 따른 UI 업데이트
@@ -243,15 +266,15 @@ export function useChat() {
       // 5. 최종적으로 AI 메시지를 UI에 업데이트하고 DB에 저장
       const finalMessages = [...updatedMessages, assistantMessage];
       setCurrentMessages(finalMessages);
-      await appendMessage(chatId, assistantMessage);
+      await appendMessage(chatId, { role: assistantMessage.role as any, content: assistantMessage.content, timestamp: (assistantMessage.timestamp as Date).getTime() });
 
       // 좌측 채팅 목록 최종 업데이트
       setChatHistory((prev) => {
-        const me = {
+        const me: UIChatSession = {
           id: chatId!,
           title: updateChatTitle(finalMessages),
           messages: finalMessages,
-          lastUpdated: Date.now(),
+          lastUpdated: new Date(),
         };
         const others = prev.filter((c) => c.id !== chatId);
         return [me, ...others];
@@ -263,10 +286,10 @@ export function useChat() {
       setError(errorMessageContent);
 
       // UI에 에러 메시지 표시
-      const errorMessage: ChatMessage = {
-        role: "assistant",
+      const errorMessage: UIChatMessage = {
+        role: "bot",
         content: `죄송합니다, 오류가 발생했습니다: ${errorMessageContent}`,
-        timestamp: Date.now(),
+        timestamp: new Date(),
       };
       setCurrentMessages((prev) => [...prev, errorMessage]);
 
@@ -320,7 +343,7 @@ export function useChat() {
 
               // 3. 컨텐츠 기반으로 뷰를 결정합니다.
               //    recipes 배열에 'ingredient_search' 소스가 하나라도 있으면 cart 뷰로 간주합니다.
-              const isCartView = (full.recipes || []).some(r => r.source === 'ingredient_search');
+              const isCartView = (full.recipes as any[] || []).some((r: any) => r?.source === 'ingredient_search');
 
               if (isCartView) {
                 setCurrentView("cart");
