@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { MessageSquare, Send, ChevronRight, ChevronLeft, ShoppingCart, ChefHat, Loader2 } from "lucide-react"
+import { MessageSquare, Send, ChevronRight, ChevronLeft, ShoppingCart, ChefHat, Loader2, Paperclip, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ChatMessage } from "../src/types"
 
@@ -16,7 +16,7 @@ interface RightChatSidebarProps {
   currentView: "welcome" | "recipe" | "cart"
   messages: ChatMessage[]
   isLoading: boolean
-  onChatSubmit: (message: string) => void
+  onChatSubmit: (message: string, image?: File) => void
   onViewChange: (view: "welcome" | "recipe" | "cart") => void
 }
 
@@ -30,7 +30,10 @@ export function RightChatSidebar({
   onViewChange,
 }: RightChatSidebarProps) {
   const [message, setMessage] = useState("")
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -44,9 +47,32 @@ export function RightChatSidebar({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (message.trim() && !isLoading) {
-      onChatSubmit(message)
+    if ((message.trim() || imageFile) && !isLoading) {
+      onChatSubmit(message, imageFile ?? undefined)
       setMessage("")
+      handleRemoveImage()
+    }
+  }
+
+  // 이미지 업로드
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setImageFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // 이미지 업로드 취소
+  const handleRemoveImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
     }
   }
 
@@ -141,16 +167,26 @@ export function RightChatSidebar({
                   {messages.map((msg, index) => {
                     const role = (msg as any).role ?? (msg as any).type
                     const isUser = role === "user"
+                    const imageUrl = msg.imageUrl
                     const ts = typeof (msg as any).timestamp === "number" ? (msg as any).timestamp : new Date((msg as any).timestamp as any).getTime()
                     return (
                       <div
                         key={index}
                         className={cn(
-                          "p-3 rounded-lg max-w-[90%]",
+                          "flex flex-col p-3 rounded-lg max-w-[90%]",
                           isUser ? "bg-blue-600 text-white ml-auto" : "bg-gray-100 dark:bg-gray-700",
                         )}
                       >
-                        <div className="whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-h-[40vh]">{msg.content}</div>
+                        {imageUrl && (
+                          <img
+                            src={imageUrl}
+                            alt="User upload"
+                            className="rounded-md mb-2 max-w-full h-auto max-h-60 object-contain"
+                          />
+                        )}
+                        {msg.content && (
+                          <div className="whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-h-[40vh]">{msg.content}</div>
+                        )}
                         <div
                           className={cn(
                             "text-xs mt-1 opacity-70",
@@ -177,7 +213,32 @@ export function RightChatSidebar({
 
           {/* Input */}
           <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
+            {imagePreview && (
+              <div className="mb-2 relative w-24 h-24">
+                <img src={imagePreview} alt="Image preview" className="rounded-md object-cover w-full h-full" />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                  onClick={handleRemoveImage}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="flex gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                className="flex-shrink-0"
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
+              <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
               <Input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
@@ -185,7 +246,7 @@ export function RightChatSidebar({
                 className="flex-1"
                 disabled={isLoading}
               />
-              <Button type="submit" size="sm" disabled={isLoading || !message.trim()}>
+              <Button type="submit" size="sm" disabled={isLoading || (!message.trim() && !imageFile)}>
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </form>

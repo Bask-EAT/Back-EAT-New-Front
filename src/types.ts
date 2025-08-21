@@ -24,6 +24,7 @@ export interface ChatMessage {
   recipes?: Recipe[]
   timestamp: Date
   chatType?: "chat" | "cart"
+  imageUrl?: string
 }
 
 // ChatSession은 새로운 ChatMessage를 사용하도록 업데이트합니다.

@@ -4,32 +4,39 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    const { message, chat_id } = await req.json()
-    if (!message || !String(message).trim()) {
-      return Response.json({ error: "message is required" }, { status: 400 })
+    const formData = await req.formData()
+    const message = formData.get("message") as string | null
+    const chat_id = formData.get("chat_id") as string | null
+    const image = formData.get("image") as File | null
+
+    // 메시지와 이미지가 모두 없는 경우에만 에러 처리
+    if ((!message || !String(message).trim()) && !image) {
+      return Response.json({ error: "message or image is required" }, { status: 400 })
     }
-    
+
     console.log("[v0] message:", message)
     if (chat_id) console.log("[v0] chat_id:", chat_id)
-    
+    if (image) console.log("[v0] image received:", { name: image.name, size: image.size, type: image.type })
+
     // LLM-Agent의 intent_service 기본 포트(8001)에 맞춤. 필요시 환경변수로 오버라이드
     const env = (globalThis as any).process?.env || {}
-    const AI_SERVER_URL = (env.AI_SERVER_URL || env.NEXT_PUBLIC_AI_SERVER_URL || "http://localhost:8001")
-    
-    console.log("[v0] AI_SERVER_URL:", AI_SERVER_URL) 
+    const AI_SERVER_URL = env.AI_SERVER_URL || env.NEXT_PUBLIC_AI_SERVER_URL || "http://localhost:8001"
+
+    console.log("[v0] AI_SERVER_URL:", AI_SERVER_URL)
     console.log("[v0] Full request URL:", `${AI_SERVER_URL}/chat`)
-    
+
+    // AI 서버로 전달할 FormData 생성
+    const aiServerFormData = new FormData()
+    if (message) aiServerFormData.append("message", message)
+    if (chat_id) aiServerFormData.append("chat_id", chat_id)
+    if (image) aiServerFormData.append("image", image)
+
     // Step 1: Send chat request to external AI server
     const chatResponse = await fetch(`${AI_SERVER_URL}/chat`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        message: message,
-        // 백엔드가 아직 사용하지 않더라도 함께 전달 (무시 가능)
-        chat_id: chat_id,
-      }),
+      // FormData를 body로 사용할 때 'Content-Type' 헤더는
+      // 브라우저/fetch가 자동으로 'multipart/form-data'와 boundary를 설정합니다.
+      body: aiServerFormData,
     })
 
     console.log("[v0] Chat response status:", chatResponse.status)

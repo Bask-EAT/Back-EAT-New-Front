@@ -103,8 +103,8 @@ export function useChat() {
 
 
   // 채팅 제출 처리
-   const handleChatSubmit = async (message: string) => {
-    if (!message.trim() || isLoading) return;
+   const handleChatSubmit = async (message: string, image?: File) => {
+    if ((!message.trim() && !image) || isLoading) return;
 
     setIsLoading(true);
     setError(null);
@@ -149,13 +149,15 @@ export function useChat() {
       role: "user",
       content: message,
       timestamp: new Date(),
+      // 이미지 미리보기를 위한 임시 로컬 URL 생성
+      imageUrl: image ? URL.createObjectURL(image) : undefined,
     };
     
     const updatedMessages: UIChatMessage[] = [...currentMessages, userMessage];
     setCurrentMessages(updatedMessages);
 
     try {
-      const dbMessage: DBChatMessage = { role: userMessage.role as any, content: userMessage.content, timestamp: userMessage.timestamp.getTime() }
+      const dbMessage: DBChatMessage = { role: userMessage.role as any, content: userMessage.content, timestamp: userMessage.timestamp.getTime() };
       await appendMessage(chatId, dbMessage);
     } catch (e: any) {
       console.error(e);
@@ -176,13 +178,19 @@ export function useChat() {
 
     // 3. AI 서버에 요청 (사용자 메시지만 전송, 히스토리 미포함)
     try {
+      const formData = new FormData();
+      formData.append("message", message);
+      if (image) {
+        formData.append("image", image);
+      }
+      if (effectiveServerChatId) {
+        formData.append("chat_id", effectiveServerChatId);
+      }
+
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: message,
-          chat_id: effectiveServerChatId,
-        }),
+        // FormData 사용 시 Content-Type 헤더는 브라우저가 자동으로 설정합니다.
+        body: formData,
       });
 
       if (!response.ok) {
