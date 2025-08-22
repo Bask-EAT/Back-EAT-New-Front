@@ -7,13 +7,9 @@ import { MessageSquarePlus, ChefHat, Menu, Bookmark, Moon, Sun, MessageSquare } 
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
 import type { ChatSession } from "../src/types"
+import { getFirebaseAuth } from "@/lib/firebase"
 
-interface ChatSession {
-  id: number
-  title: string
-  messages: any[]
-  lastUpdated: number
-}
+// 기존 로컬 인터페이스 제거: 전역 타입과 충돌하므로 src/types.ts 의 ChatSession 사용
 
 interface LeftSidebarProps {
   collapsed: boolean
@@ -143,8 +139,26 @@ export function LeftSidebar({
           )}
         </div>
 
-        {/* Theme Toggle */}
+        {/* Logout + Theme Toggle */}
         <div className="p-4 border-t border-border">
+          <div className="mb-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-full justify-start gap-2"
+              onClick={async () => {
+                try {
+                  // Firebase sign out (best-effort)
+                  try { await getFirebaseAuth().signOut() } catch {}
+                  // Clear local token and reload
+                  localStorage.removeItem("jwtToken")
+                  window.location.href = "/"
+                } catch {}
+              }}
+            >
+              로그아웃
+            </Button>
+          </div>
           <Button
             variant="ghost"
             size="sm"
