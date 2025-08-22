@@ -7,7 +7,7 @@ import { ScrollArea, ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { ShoppingCart, Check, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Product, Recipe } from "../src/types"
+import type { Product, Recipe, Ingredient } from "../src/types"
 
 
 // interface IngredientWithProducts {
@@ -53,12 +53,13 @@ export function ShoppingListScreen({
 
     // cartItems 배열의 '가장 마지막' 요소만 사용해서 최신 검색 결과를 반영합니다.
     const latestRecipeItem = cartItems[cartItems.length - 1];
+    console.log("cartItems 배열의 가장 마지막 요소(latestRecipeItem) --------", latestRecipeItem)
 
     // 최신 데이터가 유효한지 확인합니다.
-    if (latestRecipeItem && latestRecipeItem.food_name && latestRecipeItem.ingredients) {
+    if (latestRecipeItem && latestRecipeItem.food_name && (latestRecipeItem.product || latestRecipeItem.ingredients)) {
         const newGroup: CartItemGroup = {
             ingredientName: latestRecipeItem.food_name,
-            products: latestRecipeItem.ingredients as Product[],
+            products: latestRecipeItem.product as Product[] || latestRecipeItem.ingredients as Ingredient[],
             isActive: true,
             selectedProductId: undefined,
         };

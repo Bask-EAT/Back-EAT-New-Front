@@ -10,6 +10,7 @@ import { getOrCreateUserId, generateChatIdForUser } from "@/lib/utils"
 type ChatServiceResponse = {
   chatType?: "chat" | "cart"
   content?: string
+  answer?: string // 이전 버전 또는 다른 백엔드와의 호환성을 위해 추가
   recipes?: any[]
 }
 
@@ -191,7 +192,7 @@ export function useChat() {
         formData.append("chat_id", effectiveServerChatId);
       }
 
-      console.log("전송하는 formData 확인 ------", formData)
+      // console.log("전송하는 formData 확인 ------", formData)
 
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -220,9 +221,12 @@ export function useChat() {
           return firstRecipe?.food_name ? `네. ${firstRecipe.food_name} 레시피를 알려드릴게요.` : "요청하신 결과를 준비했어요.";
         })();
 
+        // 백엔드에서 content 또는 answer 필드로 응답이 올 수 있는 경우를 모두 처리합니다.
+        const messageContent = (service.content && service.content.trim()) || (service.answer && service.answer.trim()) || fallbackText;
+
         assistantMessage = {
           role: "bot",
-          content: (service.content && service.content.trim()) ? service.content : fallbackText,
+          content: messageContent,
           timestamp: new Date(),
         };
         
