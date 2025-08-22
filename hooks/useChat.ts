@@ -144,6 +144,8 @@ export function useChat() {
       // 서버 chat_id 생성 실패해도 전송은 진행 (백엔드가 무시 가능)
     }
 
+
+    // ------------------
     // 2. 사용자 메시지 UI에 먼저 표시하고 DB에 저장
     const userMessage: UIChatMessage = {
       role: "user",
@@ -176,6 +178,8 @@ export function useChat() {
       return [me, ...others];
     });
 
+
+    // ------------------
     // 3. AI 서버에 요청 (사용자 메시지만 전송, 히스토리 미포함)
     try {
       const formData = new FormData();
@@ -186,6 +190,8 @@ export function useChat() {
       if (effectiveServerChatId) {
         formData.append("chat_id", effectiveServerChatId);
       }
+
+      console.log("전송하는 formData 확인 ------", formData)
 
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -200,10 +206,12 @@ export function useChat() {
       const raw = await response.json();
       console.log("-------------------AI 응답:", raw);
 
+
+      // ------------------
       // 4. AI 응답 처리 (스키마 분기)
       let assistantMessage: UIChatMessage;
 
-      // --- 4-1. 새로운 표준 스키마 처리 ---
+      // 4-1. 새로운 표준 스키마 처리
       if (raw && typeof raw === "object" && (raw as ChatServiceResponse).chatType) {
         const service: ChatServiceResponse = raw as ChatServiceResponse;
 
@@ -271,9 +279,12 @@ export function useChat() {
         setLastSuggestions(suggestions);
       }
 
+
+      // ------------------
       // 5. 최종적으로 AI 메시지를 UI에 업데이트하고 DB에 저장
       const finalMessages = [...updatedMessages, assistantMessage];
       setCurrentMessages(finalMessages);
+      console.log('최종적으로 AI 메시지 확인 (finalMessages) -------- ', finalMessages)
       await appendMessage(chatId, { role: assistantMessage.role as any, content: assistantMessage.content, timestamp: (assistantMessage.timestamp as Date).getTime() });
 
       // 좌측 채팅 목록 최종 업데이트
