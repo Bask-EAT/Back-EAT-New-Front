@@ -190,7 +190,7 @@ export function useChat() {
         body: formData,
       });
 
-      if (!response.ok) {
+      if (!response.ok) 
         throw new Error(`AI 응답 실패: ${response.statusText}`);
 
       const data = await postJson<any>("/api/chat", {
