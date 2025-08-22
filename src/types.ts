@@ -11,19 +11,29 @@ export interface Product {
   product_address: string
 }
 
-export interface Recipe {
-  source: "text" | "video" | "ingredient_search"
+export interface TextRecipe {
+  source: "text" | "video"
   food_name: string
-  ingredients: (Ingredient | Product)[]
-  recipe: string[]
+  ingredients: Ingredient[] // 레시피 재료
+  recipe: string[] // 조리 방법
 }
+
+export interface CartRecipe {
+  source: "ingredient_search"
+  food_name: string
+  product: Product[] // 상품 정보
+  recipe: [] // 항상 빈 배열
+}
+
+export type Recipe = TextRecipe | CartRecipe
 
 export interface ChatMessage {
   role: "user" | "assistant"
   content: string
   recipes?: Recipe[]
   timestamp: Date
-  chatType?: "chat" | "cart"
+  chatType?: "chat" | "cart" | "recipe"
+  imageUrl?: string
 }
 
 // ChatSession은 새로운 ChatMessage를 사용하도록 업데이트합니다.

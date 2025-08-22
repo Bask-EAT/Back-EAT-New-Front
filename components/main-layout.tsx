@@ -17,7 +17,7 @@ interface MainLayoutProps {
   isLoading: boolean
   rightSidebarCollapsed: boolean
   onNewChat: () => void
-  onChatSubmit: (message: string) => void
+  onChatSubmit: (message: string, image?: File) => void
   onChatSelect: (chatId: number) => void
   onViewChange: (view: "welcome" | "recipe" | "cart") => void
   onRightSidebarToggle: () => void

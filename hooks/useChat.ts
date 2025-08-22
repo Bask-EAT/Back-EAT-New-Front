@@ -11,6 +11,7 @@ import { postJson } from "@/lib/api"
 type ChatServiceResponse = {
   chatType?: "chat" | "cart"
   content?: string
+  answer?: string // 이전 버전 또는 다른 백엔드와의 호환성을 위해 추가
   recipes?: any[]
 }
 
@@ -104,8 +105,8 @@ export function useChat() {
 
 
   // 채팅 제출 처리
-   const handleChatSubmit = async (message: string) => {
-    if (!message.trim() || isLoading) return;
+   const handleChatSubmit = async (message: string, image?: File) => {
+    if ((!message.trim() && !image) || isLoading) return;
 
     setIsLoading(true);
     setError(null);
@@ -134,18 +135,22 @@ export function useChat() {
     // 1-b. 서버 전송용 chat_id: 최초 요청에서는 null, 이후에는 서버에서 받은 chat_id 사용
     const effectiveServerChatId = serverChatId
 
+
+    // ------------------
     // 2. 사용자 메시지 UI에 먼저 표시하고 DB에 저장
     const userMessage: UIChatMessage = {
       role: "user",
       content: message,
       timestamp: new Date(),
+      // 이미지 미리보기를 위한 임시 로컬 URL 생성
+      imageUrl: image ? URL.createObjectURL(image) : undefined,
     };
     
     const updatedMessages: UIChatMessage[] = [...currentMessages, userMessage];
     setCurrentMessages(updatedMessages);
 
     try {
-      const dbMessage: DBChatMessage = { role: userMessage.role as any, content: userMessage.content, timestamp: userMessage.timestamp.getTime() }
+      const dbMessage: DBChatMessage = { role: userMessage.role as any, content: userMessage.content, timestamp: userMessage.timestamp.getTime() };
       await appendMessage(chatId, dbMessage);
     } catch (e: any) {
       console.error(e);
@@ -164,8 +169,30 @@ export function useChat() {
       return [me, ...others];
     });
 
+
+    // ------------------
     // 3. AI 서버에 요청 (사용자 메시지만 전송, 히스토리 미포함)
     try {
+      const formData = new FormData();
+      formData.append("message", message);
+      if (image) {
+        formData.append("image", image);
+      }
+      if (effectiveServerChatId) {
+        formData.append("chat_id", effectiveServerChatId);
+      }
+
+      // console.log("전송하는 formData 확인 ------", formData)
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        // FormData 사용 시 Content-Type 헤더는 브라우저가 자동으로 설정합니다.
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI 응답 실패: ${response.statusText}`);
+
       const data = await postJson<any>("/api/chat", {
         message,
         chat_id: effectiveServerChatId,
@@ -182,10 +209,12 @@ export function useChat() {
       const raw = data as any
       console.log("-------------------AI 응답:", raw)
 
+
+      // ------------------
       // 4. AI 응답 처리 (스키마 분기)
       let assistantMessage: UIChatMessage;
 
-      // --- 4-1. 새로운 표준 스키마 처리 ---
+      // 4-1. 새로운 표준 스키마 처리
       if (raw && typeof raw === "object" && (raw as ChatServiceResponse).chatType) {
         const service: ChatServiceResponse = raw as ChatServiceResponse;
 
@@ -194,9 +223,12 @@ export function useChat() {
           return firstRecipe?.food_name ? `네. ${firstRecipe.food_name} 레시피를 알려드릴게요.` : "요청하신 결과를 준비했어요.";
         })();
 
+        // 백엔드에서 content 또는 answer 필드로 응답이 올 수 있는 경우를 모두 처리합니다.
+        const messageContent = (service.content && service.content.trim()) || (service.answer && service.answer.trim()) || fallbackText;
+
         assistantMessage = {
           role: "bot",
-          content: (service.content && service.content.trim()) ? service.content : fallbackText,
+          content: messageContent,
           timestamp: new Date(),
         };
         
@@ -253,9 +285,12 @@ export function useChat() {
         setLastSuggestions(suggestions);
       }
 
+
+      // ------------------
       // 5. 최종적으로 AI 메시지를 UI에 업데이트하고 DB에 저장
       const finalMessages = [...updatedMessages, assistantMessage];
       setCurrentMessages(finalMessages);
+      console.log('최종적으로 AI 메시지 확인 (finalMessages) -------- ', finalMessages)
       await appendMessage(chatId, { role: assistantMessage.role as any, content: assistantMessage.content, timestamp: (assistantMessage.timestamp as Date).getTime() });
 
       // 좌측 채팅 목록 최종 업데이트
