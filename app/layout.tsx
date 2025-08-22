@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { ThemeProvider } from "@/components/theme-provider"
+import { LoginGate } from "@/components/LoginGate"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -29,7 +30,7 @@ html {
       </head>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
+          <LoginGate>{children}</LoginGate>
         </ThemeProvider>
       </body>
     </html>

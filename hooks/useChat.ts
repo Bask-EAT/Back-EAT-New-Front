@@ -5,7 +5,8 @@ import {
   appendMessage, appendRecipes, appendCartItems, getChat, toggleBookmark, ChatMessage as DBChatMessage
 } from "@/lib/chat-db"
 import { updateChatTitle, extractNumberedSuggestions, mapSelectionToDish, isNumericSelection } from "@/src/chat"
-import { getOrCreateUserId, generateChatIdForUser } from "@/lib/utils"
+import { postJson } from "@/lib/api"
+
 
 type ChatServiceResponse = {
   chatType?: "chat" | "cart"
@@ -131,19 +132,8 @@ export function useChat() {
       }
     }
 
-    // 1-b. 서버 전송용 해시 기반 chat_id 준비 (최초 1회 생성)
-    let effectiveServerChatId = serverChatId
-    try {
-      if (!effectiveServerChatId) {
-        const userId = getOrCreateUserId()
-        const newServerId = await generateChatIdForUser(userId)
-        setServerChatId(newServerId)
-        effectiveServerChatId = newServerId
-      }
-    } catch (e) {
-      console.error(e)
-      // 서버 chat_id 생성 실패해도 전송은 진행 (백엔드가 무시 가능)
-    }
+    // 1-b. 서버 전송용 chat_id: 최초 요청에서는 null, 이후에는 서버에서 받은 chat_id 사용
+    const effectiveServerChatId = serverChatId
 
 
     // ------------------
@@ -202,10 +192,22 @@ export function useChat() {
 
       if (!response.ok) {
         throw new Error(`AI 응답 실패: ${response.statusText}`);
-      }
 
-      const raw = await response.json();
-      console.log("-------------------AI 응답:", raw);
+      const data = await postJson<any>("/api/chat", {
+        message,
+        chat_id: effectiveServerChatId,
+      })
+      // 서버가 신규 대화에 대해 chat_id를 생성해 반환하므로 상태에 저장
+      if (data && typeof data === "object" && (data as any).chat_id) {
+        const returnedId = (data as any).chat_id as string
+        if (!serverChatId || serverChatId !== returnedId) {
+          setServerChatId(returnedId)
+        }
+      }
+      console.log("-------------------AI 응답:", data)
+
+      const raw = data as any
+      console.log("-------------------AI 응답:", raw)
 
 
       // ------------------

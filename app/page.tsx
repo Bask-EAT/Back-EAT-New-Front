@@ -7,6 +7,7 @@ import { RecipeExplorationScreen } from "@/components/recipe-exploration-screen"
 import { ShoppingListScreen } from "@/components/shopping-list-screen"
 import type { ChatSession, ChatMessage, UIRecipe, AIResponse, Recipe, Ingredient, Product } from "../src/types"
 import { useChat } from "@/hooks/useChat"
+import { getJson } from "@/lib/api"
 
 
 // 표준 백엔드 스키마 (chatType/content/recipes)
@@ -51,7 +52,12 @@ export default function HomePage() {
   
 
   
-
+  useEffect(() => {
+    getJson("/api/auth/me")
+      .then((me) => console.log("me:", me))
+      .catch((e) => console.error("auth/me error:", e))
+  }, [])
+  
   
 
   // const parseAIResponse = (text: string): AIResponse => {
