@@ -13,6 +13,8 @@ export async function backendFetch(path: string, init: RequestInit = {}): Promis
 
   const res = await fetch(`${BASE}${path}`, { ...init, headers, credentials: "include" })
 
+  console.log("res 요청 확인------", res)
+
   if (res.status === 401) {
     try { localStorage.removeItem("jwtToken") } catch {}
     if (typeof window !== "undefined") {
@@ -26,12 +28,14 @@ export async function backendFetch(path: string, init: RequestInit = {}): Promis
 
 export async function getJson<T>(path: string): Promise<T> {
   const res = await backendFetch(path)
+  console.log("getJson 확인 --- : ", res);
   if (!res.ok) throw new Error(await safeText(res))
   return res.json() as Promise<T>
 }
 
 export async function postJson<T>(path: string, body: unknown): Promise<T> {
   const res = await backendFetch(path, { method: "POST", body: JSON.stringify(body) })
+  console.log("postJson 확인 -----", res);
   if (!res.ok) throw new Error(await safeText(res))
   return res.json() as Promise<T>
 }
