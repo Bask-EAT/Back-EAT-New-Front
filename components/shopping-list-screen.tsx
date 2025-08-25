@@ -55,26 +55,23 @@ export function ShoppingListScreen({
     const latestRecipeItem = cartItems[cartItems.length - 1];
     console.log("cartItems 배열의 가장 마지막 요소(latestRecipeItem) --------", latestRecipeItem)
 
-    // 최신 데이터가 유효한지 확인합니다.
-    if (latestRecipeItem && latestRecipeItem.food_name && latestRecipeItem.ingredients) {
-        // cart 타입일 때는 ingredients가 Product[] 타입입니다
-        const products = latestRecipeItem.ingredients as Product[];
-        const newGroup: CartItemGroup = {
-            ingredientName: latestRecipeItem.food_name,
-            products: products,
-            isActive: true,
-            selectedProductId: undefined,
-        };
 
-      // 콘솔 로그를 통해 최신 그룹 하나만으로 업데이트되는 것을 확인할 수 있습니다.
-      console.log("🛒 ShoppingListScreen: 최신 cartItem으로 cartItemGroups를 업데이트합니다.", [newGroup]);
-      
-      // 항상 단 하나의 그룹을 가진 배열로 상태를 설정합니다.
-      setCartItemGroups([newGroup]);
-    } else {
-        // 유효하지 않은 데이터가 들어오면 상태를 비웁니다.
-        setCartItemGroups([]);
-    }
+    // ✨ 수정: cartItems 배열 전체를 그룹으로 변환합니다.
+    // 백엔드 응답의 recipes 배열에 여러 객체가 있을 미래 상황을 대비합니다.
+    const newGroups: CartItemGroup[] = cartItems.map(recipeItem => {
+        // cart 타입일 때 ingredients는 Product[] 타입입니다.
+        const products = (recipeItem.ingredients as Product[]) || [];
+        return {
+            ingredientName: recipeItem.food_name || "이미지 검색 결과",
+            products: products,
+            isActive: true, // 기본적으로 활성화 상태로 시작
+            selectedProductId: undefined, // 처음엔 아무것도 선택되지 않음
+        };
+    }).filter(group => group.products.length > 0); // 상품이 없는 그룹은 제외
+
+    console.log("🛒 ShoppingListScreen: 새로운 cartItems로 그룹을 업데이트합니다.", newGroups);
+    setCartItemGroups(newGroups);
+
   }, [cartItems])
 
   // 토글 버튼 클릭 시 해당 재료 그룹의 활성 상태를 변경합니다.

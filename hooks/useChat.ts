@@ -343,8 +343,11 @@ export function useChat() {
             console.log("=== AI 응답 처리 시작 ===");
             console.log("Raw response:", raw);
 
+            // 백엔드가 payload에 실제 데이터를 담아주므로, payload를 우선적으로 사용합니다.
+            const responseData = raw.payload || raw;
+
             // 응답 유효성 검증
-            if (!raw || typeof raw !== "object") {
+            if (!responseData || typeof responseData !== "object") {
                 console.error("유효하지 않은 응답:", raw);
                 assistantMessage = {
                     role: "assistant",
@@ -352,11 +355,10 @@ export function useChat() {
                     timestamp: new Date(),
                 };
             } else if (raw.chatType) {
-                // 4-1. 새로운 표준 스키마 처리 (백엔드 응답 구조)
-                console.log("백엔드 응답 구조로 처리:", raw);
+                // 4-1. 표준 스키마 처리
+                console.log("백엔드 응답 구조로 처리:", responseData);
 
-                // 백엔드에서 message 필드가 있으면 그대로 사용
-                const messageContent = raw.message || raw.content || "AI 응답을 받았습니다.";
+                const messageContent = responseData.answer || responseData.content || "AI 응답을 받았습니다.";
 
                 console.log("최종 메시지 내용:", messageContent);
 
@@ -366,13 +368,16 @@ export function useChat() {
                     timestamp: new Date(),
                 };
 
-                // chatType에 따른 UI 업데이트
-                console.log(`=== ${raw.chatType} 타입 처리 시작 ===`);
-                console.log("레시피 개수:", raw.recipes?.length || 0);
+                // 4-2. chatType에 따른 UI 업데이트
+                const chatType = responseData.chatType || "chat";
+                const recipes = responseData.recipes || [];
+
+                console.log(`=== ${chatType} 타입 처리 시작 ===`);
+                // console.log("레시피 개수:", raw.recipes?.length || 0);
                 console.log("현재 뷰:", currentView);
                 console.log("chatType이 'chat'인 경우 화면 변화 없음:", raw.chatType === "chat");
                 
-                switch (raw.chatType) {
+                switch (chatType) {
                     case "recipe":
                         if (raw.recipes && raw.recipes.length > 0) {
                             console.log("recipe 타입 + 레시피 있음 -> recipe 뷰로 설정");
@@ -412,7 +417,7 @@ export function useChat() {
                         break;
                         
                     case "cart":
-                        if (raw.recipes && raw.recipes.length > 0) {
+                        if (recipes && recipes.length > 0) {
                             console.log("cart 타입 + 레시피 있음 -> cart 뷰로 설정");
                             setCurrentView("cart");
                             // cart 타입일 때는 상품 정보를 카트 아이템으로 변환
@@ -432,6 +437,7 @@ export function useChat() {
                         } else {
                             console.log("cart 타입이지만 레시피가 없음 -> cart 뷰로 설정 (빈 카트)");
                             setCurrentView("cart");
+                            setCartItems([]);
                         }
                         break;
                         
