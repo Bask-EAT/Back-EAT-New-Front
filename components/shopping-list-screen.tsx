@@ -32,7 +32,8 @@ interface CartItemGroup {
   products: Product[]
   isActive: boolean
   // 상품의 고유 ID로 product_address를 사용합니다.
-  selectedProductId?: string 
+  selectedProductId?: string
+  selectedProductIds : string[]
 }
 
 
@@ -56,24 +57,24 @@ export function ShoppingListScreen({
     const latestRecipeItem = cartItems[cartItems.length - 1];
     console.log("cartItems 배열의 가장 마지막 요소(latestRecipeItem) --------", latestRecipeItem)
 
-    // 최신 데이터가 유효한지 확인합니다.
-    if (latestRecipeItem && latestRecipeItem.food_name && (latestRecipeItem.product || latestRecipeItem.ingredients)) {
-        const newGroup: CartItemGroup = {
-            ingredientName: latestRecipeItem.food_name,
-            products: latestRecipeItem.product as Product[] || latestRecipeItem.ingredients as Ingredient[],
-            isActive: true,
-            selectedProductId: undefined,
-        };
 
-      // 콘솔 로그를 통해 최신 그룹 하나만으로 업데이트되는 것을 확인할 수 있습니다.
-      console.log("🛒 ShoppingListScreen: 최신 cartItem으로 cartItemGroups를 업데이트합니다.", [newGroup]);
-      
-      // 항상 단 하나의 그룹을 가진 배열로 상태를 설정합니다.
-      setCartItemGroups([newGroup]);
-    } else {
-        // 유효하지 않은 데이터가 들어오면 상태를 비웁니다.
-        setCartItemGroups([]);
-    }
+    // ✨ 수정: cartItems 배열 전체를 그룹으로 변환합니다.
+    // 백엔드 응답의 recipes 배열에 여러 객체가 있을 미래 상황을 대비합니다.
+    const newGroups: CartItemGroup[] = cartItems.map(recipeItem => {
+        // cart 타입일 때 ingredients는 Product[] 타입입니다.
+        const products = (recipeItem.ingredients as Product[]) || [];
+        return {
+            ingredientName: recipeItem.food_name || "이미지 검색 결과",
+            products: products,
+            isActive: true, // 기본적으로 활성화 상태로 시작
+            selectedProductId: undefined, // 처음엔 아무것도 선택되지 않음
+            selectedProductIds : [], 
+        };
+    }).filter(group => group.products.length > 0); // 상품이 없는 그룹은 제외
+
+    console.log("🛒 ShoppingListScreen: 새로운 cartItems로 그룹을 업데이트합니다.", newGroups);
+    setCartItemGroups(newGroups);
+
   }, [cartItems])
 
   // 토글 버튼 클릭 시 해당 재료 그룹의 활성 상태를 변경합니다.
@@ -92,33 +93,47 @@ export function ShoppingListScreen({
   }
 
   // 선택된 상품을 토글합니다. 이미 선택된 상품을 다시 클릭하면 선택 해제됩니다.
-  const selectProduct = (groupIndex: number, productId: string) => {
+ const selectProduct = (groupIndex: number, productId: string) => {
     setCartItemGroups((prev) =>
-      prev.map((group, i) =>
-        i === groupIndex
-          ? {
-              ...group,
-              selectedProductId: group.selectedProductId === productId ? undefined : productId,
-            }
-          : group,
+      prev.map((group, i) =>{
+        // 현재 그룹이 아니면 그대로 반환
+        if (i !== groupIndex) {
+          return group;
+        }
+
+        // 선택된 상품 ID 배열을 가져옵니다.
+        const selectedProducts = group.selectedProductIds || [];
+        const isProductSelected = selectedProducts.includes(productId);
+
+        return {
+          ...group,
+          // 상품이 이미 선택된 경우 제거, 아니면 배열에 추가
+          selectedProductIds: isProductSelected
+            ? selectedProducts.filter((id) => id !== productId)
+            : [...selectedProducts, productId],
+        }}
       ),
     )
   }
 
   // 선택된 상품을 가져옵니다. 각 그룹에서 활성화된 상품만 필터링합니다.
-  const getSelectedProducts = () => {
+const getSelectedProducts = () => {
      return cartItemGroups
-      .filter((group) => group.isActive && group.selectedProductId)
-      .map((group) => ({
-        ingredient: group.ingredientName,
-        // product_address를 ID로 사용해서 선택된 상품을 찾습니다.
-        product: group.products.find((p) => p.product_address === group.selectedProductId)!,
-      }))
+      .filter((group) => group.isActive)  // 활성화된 그룹만 필터링합니다.
+      .flatMap((group) =>   // 활성화된 그룹에서 선택된 모든 상품을 단일 배열로 평탄화시킵니다.
+        group.products
+          // selectedProductIds 배열에 포함된 상품만 필터링합니다.
+            .filter((product) => group.selectedProductIds?.includes(product.product_address))
+            .map((product) => ({
+              ingredient: group.ingredientName,
+              product: product,
+            }))
+      )
   }
 
   // 선택된 상품의 총 가격을 계산합니다.
   const getTotalPrice = () => {
-    return getSelectedProducts().reduce((total, item) => total + item.product.price, 0)
+    return getSelectedProducts().reduce((total, item) => total + (item.product.price || 0), 0)
   }
 
   // 장바구니 생성 버튼 클릭 시 선택된 상품을 전달합니다.
@@ -243,38 +258,41 @@ export function ShoppingListScreen({
                     <ScrollAreaRoot className="w-full">
                       <ScrollAreaViewport className="w-full" ref={scrollContainerRef}>
                         <div className="flex flex-row gap-4 pb-4">
-                        {group.products?.map((product) => (
-                          <div
-                            key={product.product_address}
-                            className={cn(
-                              "flex-shrink-0 w-64 p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md",
-                              group.selectedProductId === product.product_address
-                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md"
-                                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
-                            )}
-                            onClick={() => selectProduct(groupIndex, product.product_address)}
-                          >
-                            <div className="text-center">
-                              <div className="relative w-24 h-24 mx-auto mb-3">
-                                <Image
+                        {group.products?.map((product) => {
+                          
+                          // 상품의 선택 상태를 배열에 포함되었는지 여부로 확인
+                          const isSelected = group.selectedProductIds?.includes(product.product_address);
+
+                          return (
+                            <div
+                              key={product.product_address}
+                              className={cn(
+                                "flex-shrink-0 w-64 p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md",
+                                isSelected
+                                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md"
+                                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
+                              )}
+                              onClick={() => selectProduct(groupIndex, product.product_address)}
+                            >
+                              <div className="text-center">
+                                <img
                                   src={product.image_url || "/placeholder.svg"}
                                   alt={product.product_name}
-                                  fill
-                                  className="object-cover rounded-lg"
+                                  className="w-24 h-24 object-cover rounded-lg mx-auto mb-3"
                                 />
-                              </div>
-                              <h4 className="font-medium text-sm mb-1 line-clamp-2">{product.product_name}</h4>
-                              <div className="flex items-center justify-center gap-1 mb-2">
-                                <span className="font-bold text-green-600">{product.price?.toLocaleString()}원</span>
-                              </div>
-                              {group.selectedProductId === product.product_address  && (
-                                <div className="mt-2">
-                                  <Badge className="bg-blue-600 text-white">Selected</Badge>
+                                <h4 className="font-medium text-sm mb-1 line-clamp-2">{product.product_name}</h4>
+                                <div className="flex items-center justify-center gap-1 mb-2">
+                                  <span className="font-bold text-green-600">{product.price?.toLocaleString()}원</span>
                                 </div>
-                              )}
+                                {isSelected  && (
+                                  <div className="mt-2">
+                                    <Badge className="bg-blue-600 text-white">Selected</Badge>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                         </div>
                       </ScrollAreaViewport>
                       <ScrollBar orientation="horizontal" />
