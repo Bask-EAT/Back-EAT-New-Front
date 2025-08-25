@@ -38,6 +38,7 @@ export async function getJson<T>(path: string): Promise<T> {
 
 export async function postJson<T>(path: string, body: unknown): Promise<T> {
     const res = await backendFetch(path, {method: "POST", body: JSON.stringify(body)})
+    console.log("-------postJon함수 실행 >> ",res)
     if (!res.ok) throw new Error(await safeText(res))
     return res.json() as Promise<T>
 }
@@ -118,6 +119,35 @@ async function safeText(res: Response): Promise<string> {
     } catch {
         return `${res.status} ${res.statusText}`
     }
+}
+
+
+// ✨ FormData 전송 함수 (새로 추가)
+export async function postMultipart<T>(path: string, formData: FormData): Promise<T> {
+  const token = localStorage.getItem("jwtToken");
+  const headers: HeadersInit = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  
+  const res = await fetch(path, {
+    method: "POST",
+    headers, // 인증 헤더 추가
+    body: formData,
+  });
+  console.log("-------postMultipart함수 실행 >> ",res)
+
+  if (!res.ok) {
+      const errorText = await res.text();
+      // 에러 응답이 JSON 형태일 수 있으므로 파싱 시도
+      try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.message || errorJson.error || errorText);
+      } catch (e) {
+          throw new Error(errorText);
+      }
+  }
+  return res.json() as Promise<T>;
 }
 
 
