@@ -13,7 +13,7 @@ import {
     appendMessage, appendRecipes, appendCartItems, getChat, toggleBookmark, ChatMessage as DBChatMessage
 } from "@/lib/chat-service"
 import {updateChatTitle, extractNumberedSuggestions, mapSelectionToDish, isNumericSelection} from "@/src/chat"
-import {postJson} from "@/lib/api"
+import {postJson, postMultipart} from "@/lib/api"
 
 type ChatServiceResponse = {
     chatType: "chat" | "recipe" | "cart"  // 3가지 타입 중 하나
@@ -292,13 +292,32 @@ export function useChat() {
             if (!token) {
                 throw new Error("토큰이 없습니다. 로그인하세요.");
             }
-            
+
             console.log('[CHAT] AI 서버 요청 시작')
-            // FormData 대신 JSON으로 요청 전송 (이미지는 나중에 처리)
-            const data = await postJson<any>("/api/chat", {
-                message,
-                chat_id: effectiveServerChatId,
-            })
+            // ✨ 서버로 보낼 최종 응답을 담을 변수
+            let data: any;
+
+            if (image) {
+                // ✨ 이미지가 있을 경우: FormData를 생성하고 postMultipart로 전송
+                const formData = new FormData();
+                const messageForServer = !message.trim() && image ? "이미지 분석 요청" : message;   // 이미지가 있고, 텍스트 메시지가 비어있을 경우, 백엔드 검증을 통과하기 위한 기본값을 설정합니다.
+                
+                formData.append("message", messageForServer);
+                if (effectiveServerChatId) {
+                    formData.append("chat_id", effectiveServerChatId);
+                }
+                formData.append("image", image);
+
+                data = await postMultipart<any>("/api/chat", formData);
+
+            } else {
+                // ✨ 이미지가 없을 경우: 기존처럼 JSON으로 전송
+                const messageForServer = message;
+                data = await postJson<any>("/api/chat", {
+                    message: messageForServer,
+                    chat_id: effectiveServerChatId,
+                });
+            }
             
             console.log('[CHAT] AI 서버 응답 받음:', data)
             
@@ -323,10 +342,6 @@ export function useChat() {
 
             console.log("=== AI 응답 처리 시작 ===");
             console.log("Raw response:", raw);
-            console.log("Raw response type:", typeof raw);
-            console.log("Raw response chatType:", raw?.chatType);
-            console.log("Raw response content:", raw?.content);
-            console.log("Raw response recipes:", raw?.recipes);
 
             // 응답 유효성 검증
             if (!raw || typeof raw !== "object") {

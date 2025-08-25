@@ -33,7 +33,7 @@ export async function POST(req: Request) {
         });
 
         const responseText = await chatResponse.text();
-        console.log("Raw chat response:", responseText);
+        console.log("API가 실제로 받은 메시지. Raw chat response:", responseText);
 
         if (!chatResponse.ok) {
             throw new Error(`Chat request failed: ${chatResponse.status} - ${responseText}`);
