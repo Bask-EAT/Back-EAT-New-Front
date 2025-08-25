@@ -5,13 +5,33 @@ import { MainLayout } from "@/components/main-layout"
 import { WelcomeScreen } from "@/components/welcome-screen"
 import { RecipeExplorationScreen } from "@/components/recipe-exploration-screen"
 import { ShoppingListScreen } from "@/components/shopping-list-screen"
+import type { ChatSession, ChatMessage, UIRecipe, AIResponse, Recipe, Ingredient, Product } from "../src/types"
 import { BookmarkList } from "@/components/BookmarkList"
 import { useChat } from "@/hooks/useChat"
 import { getJson } from "@/lib/api"
 
+
+// 표준 백엔드 스키마 (chatType/content/recipes)
+interface ServiceHealth { intent: boolean; shopping: boolean; video: boolean; agent: boolean }
+type ChatServiceResponse = { chatType: "chat" | "cart"; content: string; recipes: Recipe[] }
+
 export default function HomePage() {
+  // const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart">("welcome")
+  // const [chatHistory, setChatHistory] = useLocalStorage<ChatSession[]>("recipe-ai-chat-history", [])
+  // 북마크는 이제 food_name과 같은 고유한 문자열을 저장해야 합니다.
+  // const [bookmarkedRecipes, setBookmarkedRecipes] = useLocalStorage<string[]>("recipe-ai-bookmarks", [])
+  // const [currentChatId, setCurrentChatId] = useState<string | null>(null)
+  // const [currentMessages, setCurrentMessages] = useState<ChatMessage[]>([])
+  // const [isLoading, setIsLoading] = useState(false)
+  // const [currentRecipes, setCurrentRecipes] = useState<Recipe[]>([])
+  const [currentIngredients, setCurrentIngredients] = useState<Array<{ name: string; amount: string; unit: string }>>(
+    [],
+  )
+  const [currentCartData, setCurrentCartData] = useState<Recipe[]>([])
+  // const [cartItems, setCartItems] = useState<Array<{ name: string; amount: string; unit: string }>>([])
+  // const [error, setError] = useState<string | null>(null)
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
-  
+  const [lastSuggestions, setLastSuggestions] = useState<string[]>([])
   const {
     currentView,
     chatHistory,
@@ -20,7 +40,7 @@ export default function HomePage() {
     isLoading,
     error,
     currentRecipes,
-    cartItems,
+    cartItems, // useChat에서 cartItems를 직접 사용
     bookmarkedRecipes,
     handleNewChat,
     handleChatSubmit,
@@ -30,12 +50,15 @@ export default function HomePage() {
     handleGenerateCart,
     handleViewChange,
   } = useChat()
+  
 
+  
   useEffect(() => {
     getJson("/api/auth/me")
       .then((me) => console.log("me:", me))
       .catch((e) => console.error("auth/me error:", e))
   }, [])
+
 
   return (
     <div className="relative">

@@ -1,21 +1,39 @@
 import { useState, useEffect } from "react"
-import type { ChatSession, ChatMessage, UIRecipe, Recipe, Ingredient, Product, AIResponse } from "../src/types"
+import type {
+    ChatSession as UIChatSession,
+    ChatMessage as UIChatMessage,
+    UIRecipe,
+    Recipe,
+    Ingredient,
+    Product,
+    AIResponse
+} from "../src/types"
+import {
+    DBRecipe, DBCartItem, getAllChatsDesc, getAllBookmarkIds, createChat,
+    appendMessage, appendRecipes, appendCartItems, getChat, toggleBookmark, ChatMessage as DBChatMessage
+} from "@/lib/chat-service"
 import { updateChatTitle, extractNumberedSuggestions, mapSelectionToDish, isNumericSelection } from "@/src/chat"
 import { postJson } from "@/lib/api"
 
 type ChatServiceResponse = {
-  chatType?: "chat" | "recipe" | "cart"
-  content?: string
-  answer?: string // 이전 버전 또는 다른 백엔드와의 호환성을 위해 추가
-  recipes?: any[]
+    chatType: "chat" | "recipe" | "cart"  // 3가지 타입 중 하나
+    content?: string
+    answer?: string // 이전 버전 또는 다른 백엔드와의 호환성을 위해 추가
+    message?: string // 추가 필드 지원
+    recipes?: any[]
+    chat_id?: string
+    jobId?: string
+    timestamp?: string
+    payload?: any
 }
 
 export function useChat() {
   const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart" | "bookmark">("welcome")
-  const [chatHistory, setChatHistory] = useState<ChatSession[]>([])
+  const [chatHistory, setChatHistory] = useState<UIChatSession[]>([])
   const [bookmarkedRecipes, setBookmarkedRecipes] = useState<string[]>([])
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
-  const [currentMessages, setCurrentMessages] = useState<ChatMessage[]>([])
+  const [serverChatId, setServerChatId] = useState<string | null>(null)
+  const [currentMessages, setCurrentMessages] = useState<UIChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [currentRecipes, setCurrentRecipes] = useState<UIRecipe[]>([])
   const [currentIngredients, setCurrentIngredients] = useState<Array<{ name: string; amount: string; unit: string }>>(
@@ -74,7 +92,7 @@ export function useChat() {
   // 새 채팅 시작
   const handleNewChat = () => {
     const newChatId = `chat_${Date.now()}`
-    const newChat: ChatSession = {
+    const newChat: UIChatSession  = {
       id: newChatId,
       title: "New Chat",
       messages: [],
@@ -104,7 +122,7 @@ export function useChat() {
       if (!chatId) {
         chatId = `chat_${Date.now()}`
         setCurrentChatId(chatId)
-        const newChat: ChatSession = {
+        const newChat: UIChatSession  = {
           id: chatId,
           title: message.slice(0, 50),
           messages: [],
@@ -114,13 +132,14 @@ export function useChat() {
       }
 
       // 사용자 메시지 추가
-      const userMessage: ChatMessage = {
+      const userMessage: UIChatMessage  = {
         role: "user",
         content: message,
         timestamp: new Date(),
         imageUrl: image ? URL.createObjectURL(image) : undefined,
       }
 
+      const updatedMessages: UIChatMessage[] = [...currentMessages, userMessage];
       setCurrentMessages((prev) => [...prev, userMessage])
 
       // FormData 준비
@@ -152,7 +171,7 @@ export function useChat() {
       console.log("Chat API response:", result)
 
       // AI 응답 메시지 추가
-      const aiMessage: ChatMessage = {
+      const aiMessage: UIChatMessage  = {
         role: "assistant",
         content: result.content || result.answer || "AI 응답을 처리할 수 없습니다.",
         timestamp: new Date(),

@@ -17,6 +17,7 @@ export const updateChatTitle = (messages: ChatMessage[]) => {
   return "New Chat"
 }
 
+
 // 입력 문자열이 숫자인지 확인하는 로직.
 export function isNumericSelection(input: string): boolean {
     const text = (input || "").trim()
@@ -24,6 +25,7 @@ export function isNumericSelection(input: string): boolean {
     // 허용: 숫자/공백/콤마/한글 '번'
     return /^([0-9]+\s*(번)?\s*[,\s]?)+$/.test(text)
   }
+
 
 // 숫자 선택을 요리 이름으로 매핑하는 로직
 export function mapSelectionToDish(input: string, suggestions: string[]): string | null {
@@ -34,6 +36,7 @@ export function mapSelectionToDish(input: string, suggestions: string[]): string
     }
     return null
   }
+
 
 // 텍스트에서 번호가 매겨진 제안 목록을 추출하는 로직.
 export function extractNumberedSuggestions(text: string): string[] {

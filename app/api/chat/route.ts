@@ -61,7 +61,7 @@ export async function POST(req: Request) {
         if (chat_id) aiServerFormData.append("chat_id", chat_id);
         if (image) aiServerFormData.append("image", image);
 
-        // AI 서버에 요청
+        // 바로 /api/chat 요청 후 응답을 반환하도록 변경
         const chatResponse = await fetch(`${AI_SERVER_URL}/api/chat`, {
             headers: {"Authorization": `Bearer ${token}`},
             method: "POST",
@@ -140,6 +140,7 @@ export async function POST(req: Request) {
         );
     }
 }
+
 
 // 기존 transformExternalResponse 함수 유지 (하위 호환성)
 export function transformExternalResponse(result: ChatResponse) {
