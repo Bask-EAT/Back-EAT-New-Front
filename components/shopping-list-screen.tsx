@@ -259,7 +259,7 @@ const getSelectedProducts = () => {
                       <ScrollAreaViewport className="w-full" ref={scrollContainerRef}>
                         <div className="flex flex-row gap-4 pb-4">
                         {group.products?.map((product) => {
-                          
+
                           // 상품의 선택 상태를 배열에 포함되었는지 여부로 확인
                           const isSelected = group.selectedProductIds?.includes(product.product_address);
 
