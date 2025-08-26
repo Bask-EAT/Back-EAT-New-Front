@@ -57,11 +57,13 @@ export async function POST(req: Request) {
 
         const AI_SERVER_URL = "http://localhost:8080";
         const aiServerFormData = new FormData();
+
+        // 백엔드 AI 서버로 보낼 데이터 추가
         if (message) aiServerFormData.append("message", message);
         if (chat_id) aiServerFormData.append("chat_id", chat_id);
         if (image) aiServerFormData.append("image", image);
 
-        // 바로 /api/chat 요청 후 응답을 반환하도록 변경
+        // 바로 /api/chat 요청 후 응답을 반환하도록 변경, 백엔드 AI 서버로 전송
         const chatResponse = await fetch(`${AI_SERVER_URL}/api/chat`, {
             headers: {"Authorization": `Bearer ${token}`},
             method: "POST",
