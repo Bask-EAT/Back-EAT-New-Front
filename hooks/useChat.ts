@@ -301,6 +301,7 @@ export function useChat() {
                 // ✨ 이미지가 있을 경우: FormData를 생성하고 postMultipart로 전송
                 const formData = new FormData();
                 const messageForServer = !message.trim() && image ? "이미지 분석 요청" : message;   // 이미지가 있고, 텍스트 메시지가 비어있을 경우, 백엔드 검증을 통과하기 위한 기본값을 설정합니다.
+                console.log("전송할 메시지------", messageForServer)
                 
                 formData.append("message", messageForServer);
                 if (effectiveServerChatId) {
@@ -311,12 +312,15 @@ export function useChat() {
                 data = await postMultipart<any>("/api/chat", formData);
 
             } else {
-                // ✨ 이미지가 없을 경우: 기존처럼 JSON으로 전송
+                // ✨ 이미지가 없을 경우: URL에 쿼리 파라미터를 추가하여 전송
                 const messageForServer = message;
-                data = await postJson<any>("/api/chat", {
-                    message: messageForServer,
-                    chat_id: effectiveServerChatId,
-                });
+                // 쿼리 파라미터를 포함하는 URL을 직접 생성합니다.
+                let url = `/api/chat?message=${encodeURIComponent(messageForServer)}`;
+                if (effectiveServerChatId) {
+                    url += `&chat_id=${effectiveServerChatId}`;
+                }
+
+                data = await postJson<any>(url, {}); // 💡 body는 빈 객체 {}를 전달
             }
             
             console.log('[CHAT] AI 서버 응답 받음:', data)
