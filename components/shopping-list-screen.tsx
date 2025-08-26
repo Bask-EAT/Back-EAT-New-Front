@@ -32,6 +32,7 @@ interface CartItemGroup {
   isActive: boolean
   // 상품의 고유 ID로 product_address를 사용합니다.
   selectedProductId?: string 
+  selectedProductIds : string[]
 }
 
 
@@ -66,6 +67,7 @@ export function ShoppingListScreen({
             products: products,
             isActive: true, // 기본적으로 활성화 상태로 시작
             selectedProductId: undefined, // 처음엔 아무것도 선택되지 않음
+            selectedProductIds : [], 
         };
     }).filter(group => group.products.length > 0); // 상품이 없는 그룹은 제외
 
@@ -92,13 +94,23 @@ export function ShoppingListScreen({
   // 선택된 상품을 토글합니다. 이미 선택된 상품을 다시 클릭하면 선택 해제됩니다.
   const selectProduct = (groupIndex: number, productId: string) => {
     setCartItemGroups((prev) =>
-      prev.map((group, i) =>
-        i === groupIndex
-          ? {
-              ...group,
-              selectedProductId: group.selectedProductId === productId ? undefined : productId,
-            }
-          : group,
+      prev.map((group, i) =>{
+        // 현재 그룹이 아니면 그대로 반환
+        if (i !== groupIndex) {
+          return group;
+        }
+
+        // 선택된 상품 ID 배열을 가져옵니다.
+        const selectedProducts = group.selectedProductIds || [];
+        const isProductSelected = selectedProducts.includes(productId);
+
+        return {
+          ...group,
+          // 상품이 이미 선택된 경우 제거, 아니면 배열에 추가
+          selectedProductIds: isProductSelected
+            ? selectedProducts.filter((id) => id !== productId)
+            : [...selectedProducts, productId],
+        }}
       ),
     )
   }
@@ -106,17 +118,21 @@ export function ShoppingListScreen({
   // 선택된 상품을 가져옵니다. 각 그룹에서 활성화된 상품만 필터링합니다.
   const getSelectedProducts = () => {
      return cartItemGroups
-      .filter((group) => group.isActive && group.selectedProductId)
-      .map((group) => ({
-        ingredient: group.ingredientName,
-        // product_address를 ID로 사용해서 선택된 상품을 찾습니다.
-        product: group.products.find((p) => p.product_address === group.selectedProductId)!,
-      }))
+      .filter((group) => group.isActive)  // 활성화된 그룹만 필터링합니다.
+      .flatMap((group) =>   // 활성화된 그룹에서 선택된 모든 상품을 단일 배열로 평탄화시킵니다.
+        group.products
+          // selectedProductIds 배열에 포함된 상품만 필터링합니다.
+            .filter((product) => group.selectedProductIds?.includes(product.product_address))
+            .map((product) => ({
+              ingredient: group.ingredientName,
+              product: product,
+            }))
+      )
   }
 
   // 선택된 상품의 총 가격을 계산합니다.
   const getTotalPrice = () => {
-    return getSelectedProducts().reduce((total, item) => total + item.product.price, 0)
+    return getSelectedProducts().reduce((total, item) => total + (item.product.price || 0), 0)
   }
 
   // 장바구니 생성 버튼 클릭 시 선택된 상품을 전달합니다.
@@ -241,35 +257,41 @@ export function ShoppingListScreen({
                     <ScrollAreaRoot className="w-full">
                       <ScrollAreaViewport className="w-full" ref={scrollContainerRef}>
                         <div className="flex flex-row gap-4 pb-4">
-                        {group.products?.map((product) => (
-                          <div
-                            key={product.product_address}
-                            className={cn(
-                              "flex-shrink-0 w-64 p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md",
-                              group.selectedProductId === product.product_address
-                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md"
-                                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
-                            )}
-                            onClick={() => selectProduct(groupIndex, product.product_address)}
-                          >
-                            <div className="text-center">
-                              <img
-                                src={product.image_url || "/placeholder.svg"}
-                                alt={product.product_name}
-                                className="w-24 h-24 object-cover rounded-lg mx-auto mb-3"
-                              />
-                              <h4 className="font-medium text-sm mb-1 line-clamp-2">{product.product_name}</h4>
-                              <div className="flex items-center justify-center gap-1 mb-2">
-                                <span className="font-bold text-green-600">{product.price?.toLocaleString()}원</span>
-                              </div>
-                              {group.selectedProductId === product.product_address  && (
-                                <div className="mt-2">
-                                  <Badge className="bg-blue-600 text-white">Selected</Badge>
-                                </div>
+                        {group.products?.map((product) => {
+
+                          // 상품의 선택 상태를 배열에 포함되었는지 여부로 확인
+                          const isSelected = group.selectedProductIds?.includes(product.product_address);
+
+                          return (
+                            <div
+                              key={product.product_address}
+                              className={cn(
+                                "flex-shrink-0 w-64 p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md",
+                                isSelected
+                                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md"
+                                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
                               )}
+                              onClick={() => selectProduct(groupIndex, product.product_address)}
+                            >
+                              <div className="text-center">
+                                <img
+                                  src={product.image_url || "/placeholder.svg"}
+                                  alt={product.product_name}
+                                  className="w-24 h-24 object-cover rounded-lg mx-auto mb-3"
+                                />
+                                <h4 className="font-medium text-sm mb-1 line-clamp-2">{product.product_name}</h4>
+                                <div className="flex items-center justify-center gap-1 mb-2">
+                                  <span className="font-bold text-green-600">{product.price?.toLocaleString()}원</span>
+                                </div>
+                                {isSelected  && (
+                                  <div className="mt-2">
+                                    <Badge className="bg-blue-600 text-white">Selected</Badge>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                         </div>
                       </ScrollAreaViewport>
                       <ScrollBar orientation="horizontal" />
