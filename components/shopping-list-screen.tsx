@@ -21,6 +21,13 @@ import type { Product, Recipe, Ingredient } from "../src/types"
 
 interface ShoppingListScreenProps {
   cartItems: Recipe[]
+  // 누적된 카트 아이템 목록 추가
+  accumulatedCartItems?: Array<{
+    messageId: string;
+    content: string;
+    timestamp: number;
+    items: any[];
+  }>
   onGenerateCart: (selectedProducts: Array<{ ingredient: string; product: Product }>) => void
   isRightSidebarOpen?: boolean
 }
@@ -37,45 +44,35 @@ interface CartItemGroup {
 
 export function ShoppingListScreen({
   cartItems = [],
+  accumulatedCartItems = [],
   onGenerateCart,
   isRightSidebarOpen = false,
 }: ShoppingListScreenProps) {
   const [cartItemGroups, setCartItemGroups] = useState<CartItemGroup[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
 
-  // cartItems prop이 변경될 때마다 최신 데이터로 cartItemGroups를 업데이트합니다.
+  // accumulatedCartItems prop이 변경될 때마다 cartItemGroups를 업데이트합니다.
   useEffect(() => {
-    // cartItems 배열이 비어있으면 아무것도 하지 않고 상태를 비웁니다.
-    if (!cartItems || cartItems.length === 0) {
+    if (!accumulatedCartItems || accumulatedCartItems.length === 0) {
       setCartItemGroups([]);
       return;
     }
 
-    // cartItems 배열의 '가장 마지막' 요소만 사용해서 최신 검색 결과를 반영합니다.
-    const latestRecipeItem = cartItems[cartItems.length - 1];
-    console.log("cartItems 배열의 가장 마지막 요소(latestRecipeItem) --------", latestRecipeItem)
+    // 누적된 카트 아이템들을 시간순으로 정렬하여 최신 데이터가 아래로 쌓이도록 표시
+    const newGroups: CartItemGroup[] = accumulatedCartItems
+      .sort((a, b) => a.timestamp - b.timestamp) // 시간순 정렬 (오래된 것부터)
+      .flatMap(item => 
+        item.items.map((cartItem: any) => ({
+          ingredientName: cartItem.food_name || `Cart Item ${Date.now()}`,
+          products: (cartItem.ingredients as Product[]) || [],
+          isActive: true,
+          selectedProductId: undefined,
+        }))
+      );
 
-    // 최신 데이터가 유효한지 확인합니다.
-    if (latestRecipeItem && latestRecipeItem.food_name && latestRecipeItem.ingredients) {
-        // cart 타입일 때는 ingredients가 Product[] 타입입니다
-        const products = latestRecipeItem.ingredients as Product[];
-        const newGroup: CartItemGroup = {
-            ingredientName: latestRecipeItem.food_name,
-            products: products,
-            isActive: true,
-            selectedProductId: undefined,
-        };
-
-      // 콘솔 로그를 통해 최신 그룹 하나만으로 업데이트되는 것을 확인할 수 있습니다.
-      console.log("🛒 ShoppingListScreen: 최신 cartItem으로 cartItemGroups를 업데이트합니다.", [newGroup]);
-      
-      // 항상 단 하나의 그룹을 가진 배열로 상태를 설정합니다.
-      setCartItemGroups([newGroup]);
-    } else {
-        // 유효하지 않은 데이터가 들어오면 상태를 비웁니다.
-        setCartItemGroups([]);
-    }
-  }, [cartItems])
+    console.log('🛒 ShoppingListScreen: 누적된 cartItemGroups로 업데이트합니다.', newGroups);
+    setCartItemGroups(newGroups);
+  }, [accumulatedCartItems])
 
   // 토글 버튼 클릭 시 해당 재료 그룹의 활성 상태를 변경합니다.
   const toggleIngredientActive = (index: number) => {

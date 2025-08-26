@@ -48,6 +48,24 @@ export async function deleteJson<T>(path: string): Promise<T> {
     return res.json() as Promise<T>
 }
 
+// 채팅방의 레시피/카트 목록 조회
+export async function getChatLists(chatId: string): Promise<{
+    recipeList: Array<{
+        messageId: string;
+        content: string;
+        timestamp: number;
+        recipes: any[];
+    }>;
+    cartList: Array<{
+        messageId: string;
+        content: string;
+        timestamp: number;
+        items: any[];
+    }>;
+}> {
+    return getJson(`/api/chat/${chatId}/lists`);
+}
+
 async function safeText(res: Response): Promise<string> {
     try {
         return await res.text()

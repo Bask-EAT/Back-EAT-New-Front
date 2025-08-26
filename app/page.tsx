@@ -40,6 +40,9 @@ export default function HomePage() {
     error,
     currentRecipes,
     cartItems, // useChat에서 cartItems를 직접 사용
+    // 누적된 목록들 추가
+    accumulatedRecipes,
+    accumulatedCartItems,
     bookmarkedRecipes,
     handleNewChat,
     handleChatSubmit,
@@ -142,6 +145,7 @@ export default function HomePage() {
           {currentView === "recipe" && (
             <RecipeExplorationScreen
               recipes={currentRecipes}
+              accumulatedRecipes={accumulatedRecipes}
               bookmarkedRecipes={bookmarkedRecipes}
               onBookmarkToggle={handleBookmarkToggle}
               onAddToCart={(ing) => handleAddToCart({ item: ing.name, amount: ing.amount, unit: ing.unit })}
@@ -151,6 +155,7 @@ export default function HomePage() {
           {currentView === "cart" && (
             <ShoppingListScreen
               cartItems={cartItems}
+              accumulatedCartItems={accumulatedCartItems}
               onGenerateCart={handleGenerateCart}
               isRightSidebarOpen={!rightSidebarCollapsed}
             />

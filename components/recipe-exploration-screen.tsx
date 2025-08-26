@@ -18,6 +18,13 @@ interface IngredientItem {
 
 interface RecipeExplorationScreenProps {
   recipes: UIRecipe[]
+  // 누적된 레시피 목록 추가
+  accumulatedRecipes?: Array<{
+    messageId: string;
+    content: string;
+    timestamp: number;
+    recipes: any[];
+  }>
   bookmarkedRecipes: string[]
   onBookmarkToggle: (recipeId: string) => void
   onAddToCart: (ingredient: { name: string; amount: string; unit: string }) => void
@@ -26,6 +33,7 @@ interface RecipeExplorationScreenProps {
 
 export function RecipeExplorationScreen({
   recipes = [],
+  accumulatedRecipes = [],
   bookmarkedRecipes = [],
   onBookmarkToggle,
   onAddToCart,
@@ -33,7 +41,32 @@ export function RecipeExplorationScreen({
 }: RecipeExplorationScreenProps) {
   const [selectedRecipeIndex, setSelectedRecipeIndex] = useState<number>(0)
 
-  const selectedRecipe = recipes[selectedRecipeIndex]
+  // 누적된 레시피 목록만 표시 (최신 데이터가 아래로 쌓이도록 정렬)
+  const displayRecipes = accumulatedRecipes
+    .sort((a, b) => a.timestamp - b.timestamp) // 시간순 정렬 (오래된 것부터)
+    .flatMap(item => 
+      item.recipes.map((r: any, index: number) => ({
+        id: `accumulated_${item.messageId}_${index}`,
+        name: r.food_name || r.title || `Recipe ${index + 1}`,
+        description: `${r.source === "video" ? "영상" : r.source === "ingredient_search" ? "상품" : "텍스트"} 기반 레시피`,
+        prepTime: "준비 시간 미정",
+        cookTime: "조리 시간 미정",
+        servings: 1,
+        difficulty: "Medium",
+        ingredients: (Array.isArray(r.ingredients) ? r.ingredients : []).map((ing: any) => ({
+          name: ing.product_name || ing.item || "",
+          amount: ing.amount || "",
+          unit: ing.unit || "",
+          optional: false
+        })),
+        instructions: Array.isArray(r.recipe) ? r.recipe : Array.isArray(r.steps) ? r.steps : [],
+        tags: [r.source === "video" ? "영상레시피" : r.source === "ingredient_search" ? "상품" : "텍스트레시피"],
+        image: `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(r.food_name || r.title || '')}`,
+        timestamp: item.timestamp
+      }))
+    )
+
+  const selectedRecipe = displayRecipes[selectedRecipeIndex]
 
   return (
     <div className="flex h-full bg-gray-50 dark:bg-gray-900">
@@ -48,14 +81,14 @@ export function RecipeExplorationScreen({
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <ChefHat className="w-5 h-5" />
-              Recipes ({recipes.length})
+              Recipes ({displayRecipes.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             {/* 레시피 리스트 전용 스크롤 */}
             <ScrollArea className="h-[calc(100vh-10rem)] pr-2">
               <div className="space-y-2">
-                {recipes.map((recipe, index) => (
+                {displayRecipes.map((recipe, index) => (
                   <div
                     key={index}
                     className={cn(

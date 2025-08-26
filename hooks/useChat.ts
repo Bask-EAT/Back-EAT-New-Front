@@ -13,7 +13,7 @@ import {
     appendMessage, appendRecipes, appendCartItems, getChat, toggleBookmark, ChatMessage as DBChatMessage
 } from "@/lib/chat-service"
 import {updateChatTitle, extractNumberedSuggestions, mapSelectionToDish, isNumericSelection} from "@/src/chat"
-import {postJson} from "@/lib/api"
+import {postJson, getChatLists} from "@/lib/api"
 
 type ChatServiceResponse = {
     chatType: "chat" | "recipe" | "cart"  // 3가지 타입 중 하나
@@ -44,6 +44,19 @@ export function useChat() {
         [],
     )
     const [cartItems, setCartItems] = useState<any[]>([])
+    // 누적된 레시피와 카트 목록 상태 추가
+    const [accumulatedRecipes, setAccumulatedRecipes] = useState<Array<{
+        messageId: string;
+        content: string;
+        timestamp: number;
+        recipes: any[];
+    }>>([])
+    const [accumulatedCartItems, setAccumulatedCartItems] = useState<Array<{
+        messageId: string;
+        content: string;
+        timestamp: number;
+        items: any[];
+    }>>([])
     const [error, setError] = useState<string | null>(null)
     const [lastSuggestions, setLastSuggestions] = useState<string[]>([])
 
@@ -120,6 +133,9 @@ export function useChat() {
         setCurrentRecipes([])
         setCurrentIngredients([])
         setCartItems([])
+        // 누적된 목록들도 초기화
+        setAccumulatedRecipes([])
+        setAccumulatedCartItems([])
         setLastSuggestions([])
         setServerChatId(null)
         setError(null)
@@ -166,6 +182,32 @@ export function useChat() {
             
             setCurrentMessages(uiMessages)
             console.log(`[CHAT] 메시지 로드: ${uiMessages.length}개`)
+            
+            // 누적된 레시피/카트 목록 로드
+            try {
+                const chatLists = await getChatLists(chatId)
+                setAccumulatedRecipes(chatLists.recipeList)
+                setAccumulatedCartItems(chatLists.cartList)
+                console.log(`[CHAT] 누적된 레시피 ${chatLists.recipeList.length}개, 카트 ${chatLists.cartList.length}개 로드됨`)
+                
+                // 채팅방에 누적된 데이터가 있으면 적절한 뷰로 전환
+                if (chatLists.cartList.length > 0) {
+                    console.log('[CHAT] 카트 아이템이 있어서 cart 뷰로 전환')
+                    setCurrentView("cart")
+                } else if (chatLists.recipeList.length > 0) {
+                    console.log('[CHAT] 레시피가 있어서 recipe 뷰로 전환')
+                    setCurrentView("recipe")
+                } else {
+                    console.log('[CHAT] 누적된 데이터가 없어서 welcome 뷰 유지')
+                    setCurrentView("welcome")
+                }
+            } catch (error) {
+                console.error('[CHAT] 누적된 목록 로드 실패:', error)
+                // 실패해도 메인 채팅 로드는 계속 진행
+                setAccumulatedRecipes([])
+                setAccumulatedCartItems([])
+                setCurrentView("welcome")
+            }
             
             // 채팅 조회 시에는 순서를 변경하지 않음 (기존 재배치 로직 제거)
             // 실제 채팅 입력 시에만 최상단으로 이동하도록 수정
@@ -342,6 +384,16 @@ export function useChat() {
                             setCurrentView("recipe");
                             setCurrentRecipes(uiRecipes);
                             
+                            // 누적된 레시피 목록에 새 레시피 추가
+                            const newRecipeEntry = {
+                                messageId: `temp_${Date.now()}`, // 임시 messageId (실제로는 백엔드에서 생성됨)
+                                content: raw.message || raw.content || "AI 응답을 받았습니다.",
+                                timestamp: Date.now(),
+                                recipes: raw.recipes
+                            };
+                            setAccumulatedRecipes(prev => [...prev, newRecipeEntry]);
+                            console.log('[CHAT] 누적된 레시피 목록에 새 레시피 추가됨')
+                            
                             // 레시피는 백엔드에서 이미 저장되었으므로 여기서는 저장하지 않음
                             console.log('[CHAT] 레시피는 백엔드에서 이미 저장되었습니다')
                         } else {
@@ -360,6 +412,16 @@ export function useChat() {
                                 ingredients: Array.isArray(r.ingredients) ? r.ingredients : []
                             }));
                             setCartItems((prev) => [...prev, ...cartRecipes]);
+                            
+                            // 누적된 카트 목록에 새 카트 아이템 추가
+                            const newCartEntry = {
+                                messageId: `temp_${Date.now()}`, // 임시 messageId (실제로는 백엔드에서 생성됨)
+                                content: raw.message || raw.content || "AI 응답을 받았습니다.",
+                                timestamp: Date.now(),
+                                items: raw.recipes
+                            };
+                            setAccumulatedCartItems(prev => [...prev, newCartEntry]);
+                            console.log('[CHAT] 누적된 카트 목록에 새 카트 아이템 추가됨')
                             
                             // 카트 아이템은 백엔드에서 이미 저장되었으므로 여기서는 저장하지 않음
                             console.log('[CHAT] 카트 아이템은 백엔드에서 이미 저장되었습니다')
@@ -563,6 +625,9 @@ export function useChat() {
         error,
         currentRecipes,
         cartItems,
+        // 누적된 레시피/카트 목록 추가
+        accumulatedRecipes,
+        accumulatedCartItems,
         bookmarkedRecipes,
         handleNewChat,
         handleChatSubmit,
