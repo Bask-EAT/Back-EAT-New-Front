@@ -6,7 +6,9 @@ const BASE = process.env.NEXT_PUBLIC_BACKEND_BASE || "http://localhost:8080"
 
 export async function backendFetch(path: string, init: RequestInit = {}): Promise<Response> {
     const headers: HeadersInit = {
-        "Content-Type": "application/json",
+        // FormData를 보낼 때는 Content-Type을 브라우저가 자동으로 설정하도록 비워둬야 함
+        // init.body가 FormData가 아닐 때만 Content-Type을 설정
+        ...(!(init.body instanceof FormData) && { "Content-Type": "application/json" }),
         ...(init.headers || {}),
         ...getAuthHeaders(),
     }
@@ -130,11 +132,10 @@ export async function postMultipart<T>(path: string, formData: FormData): Promis
     headers["Authorization"] = `Bearer ${token}`;
   }
   
-  const res = await fetch(path, {
-    method: "POST",
-    headers, // 인증 헤더 추가
-    body: formData,
-  });
+  const res = await backendFetch(path, {
+        method: "POST",
+        body: formData,
+    });
   console.log("-------postMultipart함수 실행 >> ",res)
 
   if (!res.ok) {

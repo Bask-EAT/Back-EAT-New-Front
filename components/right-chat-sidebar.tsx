@@ -189,8 +189,6 @@ export function RightChatSidebar({
                     const imageUrl = msg.imageUrl
                     const ts = typeof (msg as any).timestamp === "number" ? (msg as any).timestamp : new Date((msg as any).timestamp as any).getTime()
                     
-                    console.log(`메시지 ${index}:`, { role, content: msg.content, isUser });
-                    
                     return (
                       <div
                         key={index}

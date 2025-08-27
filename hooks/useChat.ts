@@ -28,7 +28,7 @@ type ChatServiceResponse = {
 }
 
 export function useChat() {
-    const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart">("welcome")
+    const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart" | "bookmark">("welcome")
     const [chatHistory, setChatHistory] = useState<UIChatSession[]>([])
     const [bookmarkedRecipes, setBookmarkedRecipes] = useState<string[]>([])
     // UUID 기반 채팅방 ID로 변경
@@ -42,7 +42,7 @@ export function useChat() {
         [],
     )
 //   const [currentCartData, setCurrentCartData] = useState<Recipe[]>([]) // 이 상태의 용도를 확인하고 필요하면 currentRecipes와 통합 고려
-    const [cartItems, setCartItems] = useState<any[]>([])
+    const [cartItems, setCartItems] = useState<Recipe[]>([])
     const [error, setError] = useState<string | null>(null)
     const [lastSuggestions, setLastSuggestions] = useState<string[]>([])
 
@@ -112,92 +112,68 @@ export function useChat() {
 
     // 새 채팅 시작
     const handleNewChat = () => {
-        ;(async () => {
-            try {
-                console.log('[CHAT] 새 채팅 생성 시작')
-                
-                // chat-service를 사용하여 새 채팅 생성
-                const newChatId = await createChat()
-                console.log(`[CHAT] 새 채팅 생성 성공: ${newChatId}`)
-                
-                const newChat: UIChatSession = {
-                    id: newChatId,
-                    title: "New Chat",
-                    messages: [],
-                    lastUpdated: new Date(),
-                }
-                setChatHistory((prev) => [newChat, ...prev])
-                setCurrentChatId(newChatId)
-                setError(null) // 성공 시 에러 상태 초기화
-            } catch (e: any) {
-                console.error('[CHAT] 새 채팅 생성 오류:', e)
-                const errorMessage = e?.message || "새 채팅 생성 실패"
-                setError(errorMessage)
-                return // 오류 발생 시 함수 종료
-            }
-        })()
+        const newChatId = `chat_${Date.now()}`
+        const newChat: UIChatSession = {
+        id: newChatId,
+        title: "New Chat",
+        messages: [],
+        lastUpdated: new Date(),
+        }
+        setChatHistory((prev) => [newChat, ...prev])
+        setCurrentChatId(newChatId)
         setCurrentMessages([])
         setCurrentView("welcome")
         setCurrentRecipes([])
         setCurrentIngredients([])
         setCartItems([])
         setLastSuggestions([])
-        // 새 대화 시작 시 서버용 chat_id 초기화
         setServerChatId(null)
+        setError(null)
     }
 
-    // 기존 채팅 선택 시 serverChatId 설정
+    // 채팅 선택 처리
     const handleChatSelect = async (chatId: string) => {
         try {
             console.log(`[CHAT] 채팅 선택: ${chatId}`)
-            
-            // chat-service를 사용하여 채팅 조회
-            const chatRecord = await getChat(chatId)
-            if (!chatRecord) {
-                console.error(`[CHAT] 채팅방을 찾을 수 없음: ${chatId}`)
-                setError(`채팅방을 찾을 수 없습니다. (ID: ${chatId})`)
-                
-                // 채팅 히스토리에서 해당 채팅 제거
-                setChatHistory((prev) => prev.filter(c => c.id !== chatId))
-                
-                // 현재 채팅이 삭제된 채팅이었다면 초기화
-                if (currentChatId === chatId) {
-                    setCurrentChatId(null)
-                    setCurrentMessages([])
-                    setServerChatId(null)
-                    setCurrentView("welcome")
-                }
-                return
-            }
-            
-            console.log(`[CHAT] 채팅 조회 성공: ${chatId}`)
-            
-            // serverChatId 설정 (chat-service에서는 별도로 관리하지 않으므로 chatId 사용)
-            setServerChatId(chatId)
             setCurrentChatId(chatId)
-            
-            // 메시지들을 UI 형식으로 변환
-            const uiMessages: UIChatMessage[] = chatRecord.messages.map((msg) => ({
-                role: msg.role,
-                content: msg.content,
-                timestamp: new Date(msg.timestamp),
-            }))
-            
-            setCurrentMessages(uiMessages)
-            console.log(`[CHAT] 메시지 로드: ${uiMessages.length}개`)
-            
-            // 채팅 히스토리에서 선택된 채팅을 최상단으로 이동
-            setChatHistory((prev) => {
-                const selectedChat = prev.find(c => c.id === chatId)
-                const otherChats = prev.filter(c => c.id !== chatId)
-                if (selectedChat) {
-                    return [selectedChat, ...otherChats]
-                }
-                return prev
-            })
-            
-            // 에러 상태 초기화
+            setCurrentRecipes([])
+            setCurrentView("welcome")
             setError(null)
+            
+            // 백엔드에서 해당 채팅의 메시지 가져오기
+            const token = localStorage.getItem("jwtToken")
+            if (token) {
+                const response = await fetch(`/api/users/me/chats/${chatId}`, {
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                    },
+                })
+                if (response.ok) {
+                    console.log('해당 채팅의 메시지 불러옴,,,,')
+                    const chat = await response.json()
+                    if (chat.messages) {
+                        setCurrentMessages(chat.messages)
+
+                        // 메시지 기반의 폴백 뷰 결정
+                        if (chat.messages.length > 0) {
+                            const lastAssistantMessage = chat.messages.filter((m: any) => m.role === "assistant").pop()
+                            if (lastAssistantMessage) {
+                                const content = lastAssistantMessage.content.toLowerCase()
+                                    if (content.includes("recipe") || content.includes("cook")) setCurrentView("recipe")
+                                    else if (content.includes("shopping") || content.includes("ingredient")) setCurrentView("cart")
+                            }
+                        }
+                    }
+                }
+            }
+
+            console.log(`[CHAT] 채팅창 표시 완료: ${chatId}`)
+            
+            // setServerChatId(chatId)
+            // setCurrentChatId(chatId)
+            // setCurrentMessages(uiMessages)
+            // console.log(`[CHAT] 메시지 로드: ${uiMessages.length}개`)
+            
         } catch (error) {
             console.error('[CHAT] 채팅 선택 중 오류:', error)
             setError(`채팅 선택 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`)
@@ -332,6 +308,21 @@ export function useChat() {
                 if (!serverChatId || serverChatId !== returnedId) {
                     setServerChatId(returnedId)
                     console.log(`[CHAT] serverChatId 업데이트: ${returnedId}`)
+
+                    // ✨ 이 로직을 추가해야 합니다!
+                    // chatHistory 배열을 순회하면서
+                    // 현재 채팅의 임시 ID(함수 시작 시점의 chatId)를
+                    // 서버가 보내준 진짜 ID(returnedId)로 교체합니다.
+                    setChatHistory(prev =>
+                        prev.map(chat =>
+                            chat.id === chatId // chatId는 이 함수의 인자로 받은 임시 ID
+                                ? { ...chat, id: returnedId } // 임시 ID를 실제 ID로 교체!
+                                : chat
+                        )
+                    );
+                    // UI의 현재 ID도 실제 ID로 업데이트
+                    setCurrentChatId(returnedId); 
+
                 }
             }
             console.log("-------------------AI 응답:", data)
@@ -362,7 +353,7 @@ export function useChat() {
                 // 4-1. 표준 스키마 처리
                 console.log("백엔드 응답 구조로 처리:", responseData);
 
-                const messageContent = responseData.answer || responseData.content || "AI 응답을 받았습니다.";
+                const messageContent = responseData.answer || responseData.content || raw.message;
 
                 console.log("최종 메시지 내용:", messageContent);
 
@@ -564,48 +555,58 @@ export function useChat() {
 
 
     // 북마크 토글 핸들러
-    const handleBookmarkToggle = (recipeId: string) => {
-        // 현재 화면의 레시피 중 대상 찾기
-        const recipe = currentRecipes.find((r) => r.id === recipeId)
-        if (!recipe) return
-            ;
-        (async () => {
-            try {
-                const toggled = await toggleBookmark(recipe as unknown as DBRecipe)
-                setBookmarkedRecipes((prev) =>
-                    toggled ? [...new Set([...prev, recipeId])] : prev.filter((id) => id !== recipeId),
-                )
-            } catch (e: any) {
-                console.error(e)
-                setError(e?.message || "북마크 저장 실패")
+    const handleBookmarkToggle = async (recipeId: string) => {
+        try {
+            const token = localStorage.getItem("jwtToken")
+            if (!token) {
+                throw new Error("No authentication token found")
             }
-        })()
+
+            const isBookmarked = bookmarkedRecipes.includes(recipeId)
+            const action = isBookmarked ? "remove" : "add"
+
+            const response = await fetch("/api/bookmarks", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ recipeId, action }),
+            })
+
+            if (!response.ok) {
+                throw new Error(`Failed to ${action} bookmark`)
+            }
+
+            // 로컬 상태 업데이트
+            if (action === "add") {
+                setBookmarkedRecipes((prev) => [...prev, recipeId])
+            } else {
+                setBookmarkedRecipes((prev) => prev.filter((id) => id !== recipeId))
+            }
+        } catch (e: any) {
+            console.error("Bookmark toggle error:", e)
+            setError(e?.message || "북마크 저장 실패")
+        }
     }
 
 
     // 카트에 추가 핸들러
     const handleAddToCart = (ingredient: Ingredient) => {
+        // Ingredient를 CartRecipe로 변환
+        const cartRecipe: Recipe = {
+        source: "ingredient_search",
+        food_name: ingredient.item,
+        product: [],
+        recipe: []
+        }
+        
         setCartItems((prev) => {
-            const exists = prev.some((item) => item.item === ingredient.item)
+            const exists = prev.some((item) => item.food_name === ingredient.item)
             if (exists) return prev
-            return [...prev, ingredient]
+            return [...prev, cartRecipe]
         })
-        ;(async () => {
-            try {
-                if (currentChatId) {
-                    // chat-service를 사용하여 카트 아이템 저장
-                    await appendCartItems(currentChatId, [{
-                        name: ingredient.item,  // Ingredient.item을 DBCartItem.name으로 매핑
-                        amount: ingredient.amount,
-                        unit: ingredient.unit
-                    }])
-                    console.log('[CHAT] 카트 아이템 추가 완료')
-                }
-            } catch (e: any) {
-                console.error('[CHAT] 카트 아이템 추가 실패:', e)
-                setError(e?.message || "카트 저장 실패")
-            }
-        })()
+    
         // Switch to cart view when adding items
         setCurrentView("cart")
     }
@@ -650,7 +651,7 @@ export function useChat() {
 
 
     // 뷰 변경 핸들러
-    const handleViewChange = (view: "welcome" | "recipe" | "cart") => {
+    const handleViewChange = (view: "welcome" | "recipe" | "cart" | "bookmark") => {
         setCurrentView(view)
         setError(null)
     }
@@ -663,8 +664,10 @@ export function useChat() {
         isLoading,
         error,
         currentRecipes,
+        currentIngredients,
         cartItems,
         bookmarkedRecipes,
+        lastSuggestions,
         handleNewChat,
         handleChatSubmit,
         handleChatSelect,

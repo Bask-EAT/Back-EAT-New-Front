@@ -30,14 +30,22 @@ interface Recipe {
   updatedAt?: string
 }
 
-export function BookmarkList() {
+interface BookmarkListProps {
+  isRightSidebarOpen: boolean;
+}
+
+
+export function BookmarkList({ isRightSidebarOpen } : BookmarkListProps) {
   const [bookmarks, setBookmarks] = useState<Recipe[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
   useEffect(() => {
     loadBookmarks()
-  }, [])
+    console.log('북마크리스트/오른쪽 사이드바 오픈 -----, ', isRightSidebarOpen)
+  }, [isRightSidebarOpen])
+
+  
 
   const loadBookmarks = async () => {
     try {
