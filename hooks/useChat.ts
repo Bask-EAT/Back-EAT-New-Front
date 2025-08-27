@@ -114,10 +114,10 @@ export function useChat() {
     const handleNewChat = () => {
         const newChatId = `chat_${Date.now()}`
         const newChat: UIChatSession = {
-        id: newChatId,
-        title: "New Chat",
-        messages: [],
-        lastUpdated: new Date(),
+            id: newChatId,
+            title: "New Chat",
+            messages: [],
+            lastUpdated: new Date(),
         }
         setChatHistory((prev) => [newChat, ...prev])
         setCurrentChatId(newChatId)
@@ -150,20 +150,80 @@ export function useChat() {
                 })
                 if (response.ok) {
                     console.log('해당 채팅의 메시지 불러옴,,,,')
-                    const chat = await response.json()
-                    if (chat.messages) {
-                        setCurrentMessages(chat.messages)
+                    const chatData = await response.json()
+                    console.log('불러온 채팅 데이터:', chatData);
+
+
+                    
+                // --- ✨ 여기가 핵심 로직입니다! ---
+
+                // 1. 메시지 목록에서 레시피 데이터(metadata)가 있는 마지막 assistant 메시지 찾기
+                const assistantMessageWithRecipe = chatData.messages
+                    .slice()
+                    .reverse()
+                    .find((msg: any) => 
+                        msg.role === 'assistant' && msg.metadata && msg.metadata.recipes
+                    );
+
+                // 2. 만약 레시피 데이터를 찾았다면?
+                if (assistantMessageWithRecipe) {
+                    const recipesFromMetadata =
+                        assistantMessageWithRecipe.metadata.recipes;
+
+                    // 3. 레시피 데이터를 UI 형식(UIRecipe)으로 변환
+                    const normalizedRecipes: UIRecipe[] =
+                        recipesFromMetadata.map((r: any, index: number) => ({
+                            id: r.messageId || `recipe_${Date.now()}_${index}`,
+                            name:
+                                r.foodName ||
+                                r.food_name ||
+                                `Recipe ${index + 1}`,
+                            description: `${r.source || "텍스트"} 기반 레시피`,
+                            prepTime: "준비 시간 미정",
+                            cookTime: "조리 시간 미정",
+                            servings: 1,
+                            difficulty: "Medium",
+                            ingredients: (r.ingredients || []).map(
+                                (ing: any) => ({
+                                    name: ing.item || "",
+                                    amount: ing.amount || "",
+                                    unit: ing.unit || "",
+                                    optional: false,
+                                })
+                            ),
+                            instructions: r.recipe || [],
+                            tags: [
+                                r.source === "video"
+                                    ? "영상레시피"
+                                    : "텍스트레시피",
+                            ],
+                            image: `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(
+                                r.foodName || ""
+                            )}`,
+                        }));
+
+                    console.log("UI용으로 변환된 레시피:", normalizedRecipes);
+
+                    // 4. 변환된 레시피 데이터로 상태 업데이트!
+                    setCurrentRecipes(normalizedRecipes);
+
+                    // 5. 뷰를 'recipe'로 설정하여 RecipeExplorationScreen을 띄운다!
+                    setCurrentView("recipe");
+
+                    // 메시지 목록은 항상 업데이트
+                    if (chatData.messages) {
+                        setCurrentMessages(chatData.messages);
 
                         // 메시지 기반의 폴백 뷰 결정
-                        if (chat.messages.length > 0) {
-                            const lastAssistantMessage = chat.messages.filter((m: any) => m.role === "assistant").pop()
-                            if (lastAssistantMessage) {
-                                const content = lastAssistantMessage.content.toLowerCase()
-                                    if (content.includes("recipe") || content.includes("cook")) setCurrentView("recipe")
-                                    else if (content.includes("shopping") || content.includes("ingredient")) setCurrentView("cart")
-                            }
-                        }
+                        // if (chat.messages.length > 0) {
+                        //     const lastAssistantMessage = chat.messages.filter((m: any) => m.role === "assistant").pop()
+                        //     if (lastAssistantMessage) {
+                        //         const content = lastAssistantMessage.content.toLowerCase()
+                        //             if (content.includes("recipe") || content.includes("cook")) setCurrentView("recipe")
+                        //             else if (content.includes("shopping") || content.includes("ingredient"))                setCurrentView("cart")
+                        //     }
                     }
+                }
                 }
             }
 
