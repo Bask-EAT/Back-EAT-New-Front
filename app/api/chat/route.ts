@@ -23,11 +23,27 @@ interface ChatResponse {
 }
 
 export async function POST(req: Request) {
+    let chat_id: string | null = null;
+    
     try {
-        const formData = await req.formData();
-        const message = formData.get("message") as string | null;
-        const chat_id = formData.get("chat_id") as string | null;
-        const image = formData.get("image") as File | null;
+        // Content-Type에 따라 FormData 또는 JSON 처리
+        const contentType = req.headers.get("content-type");
+        let message: string | null = null;
+        let image: File | null = null;
+
+        if (contentType?.includes("multipart/form-data")) {
+            // FormData 처리 (이미지 포함)
+            const formData = await req.formData();
+            message = formData.get("message") as string | null;
+            chat_id = formData.get("chat_id") as string | null;
+            image = formData.get("image") as File | null;
+        } else {
+            // JSON 처리
+            const body = await req.json();
+            message = body.message || null;
+            chat_id = body.chat_id || null;
+            image = null; // JSON에서는 이미지 처리 불가
+        }
 
         if ((!message || !String(message).trim()) && !image) {
             return Response.json({error: "message or image is required"}, {status: 400});
@@ -45,7 +61,7 @@ export async function POST(req: Request) {
         if (chat_id) aiServerFormData.append("chat_id", chat_id);
         if (image) aiServerFormData.append("image", image);
 
-        // 바로 /api/chat 요청 후 응답을 반환하도록 변경
+        // AI 서버에 요청
         const chatResponse = await fetch(`${AI_SERVER_URL}/api/chat`, {
             headers: {"Authorization": `Bearer ${token}`},
             method: "POST",
@@ -59,29 +75,73 @@ export async function POST(req: Request) {
             throw new Error(`Chat request failed: ${chatResponse.status} - ${responseText}`);
         }
 
-        // polling 없이 /api/chat 응답을 바로 JSON으로 파싱해 반환
-        const result: ChatResponse = JSON.parse(responseText);
-        // content 필드가 없으면 answer 사용
-        const content = typeof result.content === "string" && result.content.trim()
-            ? result.content
-            : (typeof result.answer === "string" ? result.answer : "");
-        return Response.json({...result, content});
+        // 응답 파싱 및 필드 정규화
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error("Failed to parse response as JSON:", parseError);
+            // JSON 파싱 실패 시 텍스트를 content로 사용
+            result = { content: responseText };
+        }
+
+        console.log("백엔드 원본 응답:", result);
+        console.log("백엔드 응답 타입:", typeof result);
+        console.log("백엔드 응답 payload:", result?.payload);
+
+        // 백엔드 응답 구조 정규화
+        // payload 안에 chatType, content/answer, recipes가 들어있음
+        if (result && typeof result === "object" && result.payload) {
+            const payload = result.payload;
+            console.log("Payload 내용:", payload);
+            
+            // chatType이 "chat"인 경우 화면 변화가 없어야 함
+            const chatType = payload.chatType || "chat";
+            console.log("백엔드에서 받은 chatType:", chatType);
+            
+            // payload에서 필요한 정보 추출
+            const normalizedResult = {
+                chatType: chatType,
+                content: payload.content || payload.answer || result.message || "AI 응답을 받았습니다.",
+                recipes: Array.isArray(payload.recipes) ? payload.recipes : [],
+                chat_id: result.chat_id,
+                jobId: result.job_id,
+                timestamp: result.timestamp,
+                payload: payload
+            };
+            
+            console.log("정규화된 응답:", normalizedResult);
+            console.log("chatType이 'chat'인 경우 화면 변화 없음:", chatType === "chat");
+            return Response.json(normalizedResult);
+        }
+
+        // payload가 없는 경우 기본 응답 (기존 로직과 호환)
+        console.log("payload가 없는 응답 -> 기본 처리");
+        const defaultResult = {
+            chatType: "chat",
+            content: result.message || result.content || result.answer || "AI 응답을 받았습니다.",
+            recipes: Array.isArray(result.recipes) ? result.recipes : [],
+            chat_id: result.chat_id,
+            timestamp: result.timestamp
+        };
+        return Response.json(defaultResult);
 
     } catch (error) {
         console.error("Chat API error:", error);
         return Response.json(
             {
-                type: "general",
+                chatType: "chat",
                 content: "죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.",
                 error: error instanceof Error ? error.message : "Failed to process chat message",
                 recipes: [],
-                ingredients: [],
+                chat_id: chat_id,
             },
             {status: 500}
         );
     }
 }
 
+// 기존 transformExternalResponse 함수 유지 (하위 호환성)
 export function transformExternalResponse(result: ChatResponse) {
     const answer: string = result?.answer ?? "AI의 답변입니다.";
     const chatType: "cart" | "chat" | "recipe" | undefined = result?.chatType;

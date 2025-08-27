@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -8,6 +8,14 @@ import { Badge } from "@/components/ui/badge"
 import { ChefHat, Bookmark, BookmarkCheck, ShoppingCart, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { UIRecipe } from "../src/types"
+import { backendFetch } from "@/lib/api"
+
+interface IngredientItem {
+  name: string
+  amount: string
+  unit: string
+  optional?: boolean
+}
 
 interface RecipeExplorationScreenProps {
   recipes: UIRecipe[]
@@ -15,6 +23,7 @@ interface RecipeExplorationScreenProps {
   onBookmarkToggle: (recipeId: string) => void
   onAddToCart: (ingredient: { name: string; amount: string; unit: string }) => void
   isRightSidebarOpen?: boolean
+  currentChatId?: string | null
 }
 
 export function RecipeExplorationScreen({
@@ -23,10 +32,81 @@ export function RecipeExplorationScreen({
   onBookmarkToggle,
   onAddToCart,
   isRightSidebarOpen = false,
+  currentChatId,
 }: RecipeExplorationScreenProps) {
   const [selectedRecipeIndex, setSelectedRecipeIndex] = useState<number>(0)
+  const [recipesWithDetails, setRecipesWithDetails] = useState<UIRecipe[]>(recipes)
 
-  const selectedRecipe = recipes[selectedRecipeIndex]
+  const selectedRecipe = recipesWithDetails[selectedRecipeIndex]
+
+  // 레시피 상세 정보 로드
+  const loadRecipeDetails = async (recipe: UIRecipe) => {
+    if (!currentChatId || !recipe.id || recipe.ingredients.length > 0) return
+    
+    try {
+      console.log('[RECIPE] 상세 정보 로드 시작:', { chatId: currentChatId, messageId: recipe.id })
+      
+      // 백엔드 API 호출
+      const response = await backendFetch(`/api/users/chats/${currentChatId}/recipes/${recipe.id}`)
+      console.log('[RECIPE] API 응답 상태:', response.status)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('[RECIPE] API 응답 데이터:', data)
+        const recipes = data.data || []
+        console.log('[RECIPE] recipes 배열:', recipes)
+        
+        if (recipes.length > 0) {
+          const recipeData = recipes[0]
+          console.log('[RECIPE] 첫 번째 레시피 데이터:', recipeData)
+          console.log('[RECIPE] ingredients 필드:', recipeData.ingredients)
+          console.log('[RECIPE] recipe 필드:', recipeData.recipe)
+          console.log('[RECIPE] instructions 필드:', recipeData.instructions)
+          
+          const updatedRecipe: UIRecipe = {
+            ...recipe,
+            ingredients: Array.isArray(recipeData.ingredients) ? recipeData.ingredients.map((ing: any) => ({
+              name: ing.name || ing.item || "",
+              amount: ing.amount || "",
+              unit: ing.unit || "",
+              optional: false
+            })) : [],
+            instructions: Array.isArray(recipeData.recipe) ? recipeData.recipe : Array.isArray(recipeData.instructions) ? recipeData.instructions : []
+          }
+          
+          console.log('[RECIPE] 업데이트된 레시피:', updatedRecipe)
+          console.log('[RECIPE] ingredients 개수:', updatedRecipe.ingredients.length)
+          console.log('[RECIPE] instructions 개수:', updatedRecipe.instructions.length)
+          
+          setRecipesWithDetails(prev => 
+            prev.map(r => r.id === recipe.id ? updatedRecipe : r)
+          )
+        } else {
+          console.log('[RECIPE] recipes 배열이 비어있음')
+        }
+      } else {
+        console.error('[RECIPE] API 응답 실패:', response.status, response.statusText)
+        const errorText = await response.text()
+        console.error('[RECIPE] 에러 응답 내용:', errorText)
+      }
+    } catch (error) {
+      console.error('[RECIPE] 레시피 상세 정보 로드 실패:', error)
+    }
+  }
+
+  // 레시피 선택 시 상세 정보 로드
+  const handleRecipeSelect = (index: number) => {
+    setSelectedRecipeIndex(index)
+    const recipe = recipesWithDetails[index]
+    if (recipe && recipe.ingredients.length === 0) {
+      loadRecipeDetails(recipe)
+    }
+  }
+
+  // recipes prop이 변경되면 recipesWithDetails도 업데이트
+  useEffect(() => {
+    setRecipesWithDetails(recipes)
+  }, [recipes])
 
   return (
     <div className="flex h-full bg-gray-50 dark:bg-gray-900">
@@ -57,7 +137,7 @@ export function RecipeExplorationScreen({
                         ? "bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-700"
                         : "hover:bg-gray-100 dark:hover:bg-gray-800",
                     )}
-                    onClick={() => setSelectedRecipeIndex(index)}
+                    onClick={() => handleRecipeSelect(index)}
                   >
                     <span className="text-sm font-medium truncate flex-1">{recipe.name}</span>
                     <Button

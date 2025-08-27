@@ -10,16 +10,16 @@ import type { ChatMessage, ChatSession } from "../src/types"
 
 interface MainLayoutProps {
   children: React.ReactNode
-  currentView: "welcome" | "recipe" | "cart"
+  currentView: "welcome" | "recipe" | "cart" | "bookmark"
   chatHistory: ChatSession[]
-  currentChatId: number | null
+  currentChatId: string | null
   currentMessages: ChatMessage[]
   isLoading: boolean
   rightSidebarCollapsed: boolean
   onNewChat: () => void
   onChatSubmit: (message: string, image?: File) => void
-  onChatSelect: (chatId: number) => void
-  onViewChange: (view: "welcome" | "recipe" | "cart") => void
+  onChatSelect: (chatId: string) => void
+  onViewChange: (view: "welcome" | "recipe" | "cart" | "bookmark") => void
   onRightSidebarToggle: () => void
 }
 

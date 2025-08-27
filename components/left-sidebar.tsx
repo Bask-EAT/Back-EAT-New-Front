@@ -15,9 +15,9 @@ interface LeftSidebarProps {
   collapsed: boolean
   onToggle: () => void
   chatHistory: ChatSession[]
-  currentChatId: number | null
+  currentChatId: string | null
   onNewChat: () => void
-  onChatSelect: (chatId: number) => void
+  onChatSelect: (chatId: string) => void
 }
 
 export function LeftSidebar({

@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { MessageSquare, Send, ChevronRight, ChevronLeft, ShoppingCart, ChefHat, Loader2, Paperclip, X } from "lucide-react"
+import { MessageSquare, Send, ChevronRight, ChevronLeft, ShoppingCart, ChefHat, Loader2, Paperclip, X, Bookmark } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ChatMessage } from "../src/types"
 import Image from "next/image"
@@ -14,11 +14,11 @@ import Image from "next/image"
 interface RightChatSidebarProps {
   collapsed: boolean
   onToggle: () => void
-  currentView: "welcome" | "recipe" | "cart"
+  currentView: "welcome" | "recipe" | "cart" | "bookmark"
   messages: ChatMessage[]
   isLoading: boolean
   onChatSubmit: (message: string, image?: File) => void
-  onViewChange: (view: "welcome" | "recipe" | "cart") => void
+  onViewChange: (view: "welcome" | "recipe" | "cart" | "bookmark") => void
 }
 
 export function RightChatSidebar({
@@ -94,7 +94,7 @@ export function RightChatSidebar({
             <ChevronLeft className="w-4 h-4" />
           </Button>
 
-          {(currentView === "recipe" || currentView === "cart") && (
+          {(currentView === "recipe" || currentView === "cart" || currentView === "bookmark") && (
             <div className="flex flex-col gap-2">
               <Button
                 variant={currentView === "recipe" ? "default" : "outline"}
@@ -113,6 +113,15 @@ export function RightChatSidebar({
                 title="Shopping Cart"
               >
                 <ShoppingCart className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={currentView === "bookmark" ? "default" : "outline"}
+                size="sm"
+                onClick={() => onViewChange("bookmark")}
+                className="p-2 w-10 h-10"
+                title="Bookmarks"
+              >
+                <Bookmark className="w-4 h-4" />
               </Button>
             </div>
           )}
@@ -151,6 +160,15 @@ export function RightChatSidebar({
                 <ShoppingCart className="w-4 h-4 mr-1" />
                 Cart
               </Button>
+              <Button
+                variant={currentView === "bookmark" ? "default" : "outline"}
+                size="sm"
+                onClick={() => onViewChange("bookmark")}
+                className="flex-1"
+              >
+                <Bookmark className="w-4 h-4 mr-1" />
+                Bookmark
+              </Button>
             </div>
           </div>
 
@@ -166,10 +184,13 @@ export function RightChatSidebar({
               ) : (
                 <div className="space-y-4 pb-4">
                   {messages.map((msg, index) => {
-                    const role = msg.role
+                    const role = (msg as any).role ?? (msg as any).type
                     const isUser = role === "user"
                     const imageUrl = msg.imageUrl
-                    const ts = typeof msg.timestamp === "number" ? msg.timestamp : new Date(msg.timestamp as string | Date).getTime()
+                    const ts = typeof (msg as any).timestamp === "number" ? (msg as any).timestamp : new Date((msg as any).timestamp as any).getTime()
+                    
+                    console.log(`메시지 ${index}:`, { role, content: msg.content, isUser });
+                    
                     return (
                       <div
                         key={index}
@@ -179,18 +200,16 @@ export function RightChatSidebar({
                         )}
                       >
                         {imageUrl && (
-                          <div className="relative mb-2 max-w-full h-auto max-h-60">
-                            <Image
-                              src={imageUrl}
-                              alt="User upload"
-                              width={240}
-                              height={240}
-                              className="rounded-md object-contain max-h-60 w-auto"
-                            />
-                          </div>
+                          <img
+                            src={imageUrl}
+                            alt="User upload"
+                            className="rounded-md mb-2 max-w-full h-auto max-h-60 object-contain"
+                          />
                         )}
                         {msg.content && (
-                          <div className="whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-h-[40vh]">{msg.content}</div>
+                          <div className="whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-h-[40vh]">
+                            {msg.content}
+                          </div>
                         )}
                         <div
                           className={cn(
@@ -220,13 +239,7 @@ export function RightChatSidebar({
           <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
             {imagePreview && (
               <div className="mb-2 relative w-24 h-24">
-                <Image 
-                  src={imagePreview} 
-                  alt="Image preview" 
-                  width={96}
-                  height={96}
-                  className="rounded-md object-cover w-full h-full" 
-                />
+                <img src={imagePreview} alt="Image preview" className="rounded-md object-cover w-full h-full" />
                 <Button
                   type="button"
                   variant="destructive"

@@ -5,6 +5,7 @@ import { MainLayout } from "@/components/main-layout"
 import { WelcomeScreen } from "@/components/welcome-screen"
 import { RecipeExplorationScreen } from "@/components/recipe-exploration-screen"
 import { ShoppingListScreen } from "@/components/shopping-list-screen"
+import { BookmarkList } from "@/components/BookmarkList"
 import { useChat } from "@/hooks/useChat"
 import { getJson } from "@/lib/api"
 
@@ -76,12 +77,18 @@ export default function HomePage() {
               onBookmarkToggle={handleBookmarkToggle}
               onAddToCart={(ing) => handleAddToCart({ item: ing.name, amount: ing.amount, unit: ing.unit })}
               isRightSidebarOpen={!rightSidebarCollapsed}
+              currentChatId={currentChatId}
             />
           )}
           {currentView === "cart" && (
             <ShoppingListScreen
               cartItems={cartItems}
               onGenerateCart={handleGenerateCart}
+              isRightSidebarOpen={!rightSidebarCollapsed}
+            />
+          )}
+          {currentView === "bookmark" && (
+            <BookmarkList
               isRightSidebarOpen={!rightSidebarCollapsed}
             />
           )}

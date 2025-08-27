@@ -11,7 +11,7 @@ type ChatServiceResponse = {
 }
 
 export function useChat() {
-  const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart">("welcome")
+  const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart" | "bookmark">("welcome")
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([])
   const [bookmarkedRecipes, setBookmarkedRecipes] = useState<string[]>([])
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
@@ -21,7 +21,7 @@ export function useChat() {
   const [currentIngredients, setCurrentIngredients] = useState<Array<{ name: string; amount: string; unit: string }>>(
     [],
   )
-  const [cartItems, setCartItems] = useState<Ingredient[]>([])
+  const [cartItems, setCartItems] = useState<Recipe[]>([])
   const [error, setError] = useState<string | null>(null)
   const [lastSuggestions, setLastSuggestions] = useState<string[]>([])
 
@@ -294,10 +294,18 @@ export function useChat() {
 
   // 카트에 추가 핸들러
   const handleAddToCart = (ingredient: Ingredient) => {
+    // Ingredient를 CartRecipe로 변환
+    const cartRecipe: Recipe = {
+      source: "ingredient_search",
+      food_name: ingredient.item,
+      product: [],
+      recipe: []
+    }
+    
     setCartItems((prev) => {
-      const exists = prev.some((item) => item.item === ingredient.item)
+      const exists = prev.some((item) => item.food_name === ingredient.item)
       if (exists) return prev
-      return [...prev, ingredient]
+      return [...prev, cartRecipe]
     })
     
     // Switch to cart view when adding items
@@ -342,7 +350,7 @@ export function useChat() {
   }
 
   // 뷰 변경 핸들러
-  const handleViewChange = (view: "welcome" | "recipe" | "cart") => {
+  const handleViewChange = (view: "welcome" | "recipe" | "cart" | "bookmark") => {
     setCurrentView(view)
     setError(null)
   }
@@ -355,8 +363,10 @@ export function useChat() {
     isLoading,
     error,
     currentRecipes,
+    currentIngredients,
     cartItems,
     bookmarkedRecipes,
+    lastSuggestions,
     handleNewChat,
     handleChatSubmit,
     handleChatSelect,

@@ -27,6 +27,15 @@ export interface CartRecipe {
 
 export type Recipe = TextRecipe | CartRecipe
 
+// 백엔드 응답 구조에 맞는 새로운 타입 (kippeum BackEAT_Front에서 통합)
+export interface BackendChatResponse {
+  chat_id: string
+  message: string
+  timestamp: string
+  chatType: "chat" | "cart" | "recipe"
+  recipes: Recipe[]
+}
+
 export interface ChatMessage {
   role: "user" | "assistant"
   content: string

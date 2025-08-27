@@ -42,6 +42,76 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
     return res.json() as Promise<T>
 }
 
+export async function deleteJson<T>(path: string): Promise<T> {
+    const res = await backendFetch(path, {method: "DELETE"})
+    if (!res.ok) throw new Error(await safeText(res))
+    return res.json() as Promise<T>
+}
+
+// 채팅방의 레시피/카트 목록 조회
+export async function getChatLists(chatId: string): Promise<{
+    recipeList: Array<{
+        messageId: string;
+        content: string;
+        timestamp: number;
+        recipes: any[];
+    }>;
+    cartList: Array<{
+        messageId: string;
+        content: string;
+        timestamp: number;
+        items: any[];
+    }>;
+}> {
+    return getJson(`/api/chat/${chatId}/lists`);
+}
+
+// 북마크 관련 API 함수들
+export interface BookmarkRequest {
+    recipeId: string;
+    recipeName: string;
+    recipeDescription?: string;
+    ingredients?: string[];
+    cookingMethods?: string[];
+    cookingTime?: string;
+    servings?: string;
+    difficulty?: string;
+    category?: string;
+}
+
+export interface BookmarkResponse {
+    success: boolean;
+    message: string;
+    data?: any[];
+    count?: number;
+    isBookmarked?: boolean;
+}
+
+// 사용자의 모든 북마크 조회
+export async function getUserBookmarks(): Promise<BookmarkResponse> {
+    return getJson("/api/bookmarks");
+}
+
+// 레시피 북마크 추가
+export async function addBookmark(recipe: BookmarkRequest): Promise<BookmarkResponse> {
+    return postJson("/api/bookmarks", recipe);
+}
+
+// 레시피 북마크 제거
+export async function removeBookmark(recipeId: string): Promise<BookmarkResponse> {
+    return deleteJson(`/api/bookmarks/${recipeId}`);
+}
+
+// 레시피 북마크 여부 확인
+export async function checkBookmark(recipeId: string): Promise<BookmarkResponse> {
+    return getJson(`/api/bookmarks/${recipeId}/check`);
+}
+
+// 레시피 북마크 토글 (추가/제거)
+export async function toggleBookmark(recipeId: string, recipe: BookmarkRequest): Promise<BookmarkResponse> {
+    return postJson(`/api/bookmarks/${recipeId}/toggle`, recipe);
+}
+
 async function safeText(res: Response): Promise<string> {
     try {
         return await res.text()
