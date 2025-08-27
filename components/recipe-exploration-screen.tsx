@@ -9,13 +9,6 @@ import { ChefHat, Bookmark, BookmarkCheck, ShoppingCart, Plus } from "lucide-rea
 import { cn } from "@/lib/utils"
 import type { UIRecipe } from "../src/types"
 
-interface IngredientItem {
-  name: string
-  amount: string
-  unit: string
-  optional?: boolean
-}
-
 interface RecipeExplorationScreenProps {
   recipes: UIRecipe[]
   bookmarkedRecipes: string[]

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { ShoppingCart, Check, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Product, Recipe, Ingredient } from "../src/types"
+import Image from "next/image"
 
 
 // interface IngredientWithProducts {
@@ -254,11 +255,14 @@ export function ShoppingListScreen({
                             onClick={() => selectProduct(groupIndex, product.product_address)}
                           >
                             <div className="text-center">
-                              <img
-                                src={product.image_url || "/placeholder.svg"}
-                                alt={product.product_name}
-                                className="w-24 h-24 object-cover rounded-lg mx-auto mb-3"
-                              />
+                              <div className="relative w-24 h-24 mx-auto mb-3">
+                                <Image
+                                  src={product.image_url || "/placeholder.svg"}
+                                  alt={product.product_name}
+                                  fill
+                                  className="object-cover rounded-lg"
+                                />
+                              </div>
                               <h4 className="font-medium text-sm mb-1 line-clamp-2">{product.product_name}</h4>
                               <div className="flex items-center justify-center gap-1 mb-2">
                                 <span className="font-bold text-green-600">{product.price?.toLocaleString()}원</span>

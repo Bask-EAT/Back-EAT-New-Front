@@ -1,14 +1,50 @@
 import type { NextRequest } from "next/server"
 
+// 상품 타입 정의
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  brand: string;
+  size: string;
+}
+
+// 요청 데이터 타입 정의
+interface CartRequest {
+  products: Array<{
+    ingredient: string;
+    product: Product;
+  }>;
+  timestamp: number;
+}
+
+// 장바구니 아이템 타입 정의
+interface CartItem {
+  ingredient: string;
+  productId: string;
+  productName: string;
+  price: number;
+  brand: string;
+  size: string;
+}
+
+// 장바구니 데이터 타입 정의
+interface CartData {
+  id: string;
+  products: CartItem[];
+  totalPrice: number;
+  createdAt: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { products, timestamp } = await req.json()
+    const { products, timestamp }: CartRequest = await req.json()
 
     // Simulate processing the shopping cart generation
     // In a real app, this would integrate with external shopping APIs
-    const cartData = {
+    const cartData: CartData = {
       id: `cart_${timestamp}`,
-      products: products.map((item: any) => ({
+      products: products.map((item) => ({
         ingredient: item.ingredient,
         productId: item.product.id,
         productName: item.product.name,
@@ -16,7 +52,7 @@ export async function POST(req: NextRequest) {
         brand: item.product.brand,
         size: item.product.size,
       })),
-      totalPrice: products.reduce((sum: number, item: any) => sum + item.product.price, 0),
+      totalPrice: products.reduce((sum: number, item) => sum + item.product.price, 0),
       createdAt: new Date().toISOString(),
     }
 

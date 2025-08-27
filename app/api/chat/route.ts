@@ -1,5 +1,27 @@
 export const dynamic = 'force-dynamic';
 
+// 응답 데이터 타입 정의
+interface ChatResponse {
+  content?: string;
+  answer?: string;
+  chatType?: "cart" | "chat" | "recipe";
+  recipes?: Array<{
+    food_name?: string;
+    title?: string;
+    source?: string;
+    ingredients?: Array<{
+      item?: string;
+      name?: string;
+      product_name?: string;
+      amount?: string;
+      unit?: string;
+    }>;
+    recipe?: string[];
+    steps?: string[];
+  }>;
+  [key: string]: unknown;
+}
+
 export async function POST(req: Request) {
     try {
         const formData = await req.formData();
@@ -38,7 +60,7 @@ export async function POST(req: Request) {
         }
 
         // polling 없이 /api/chat 응답을 바로 JSON으로 파싱해 반환
-        const result = JSON.parse(responseText);
+        const result: ChatResponse = JSON.parse(responseText);
         // content 필드가 없으면 answer 사용
         const content = typeof result.content === "string" && result.content.trim()
             ? result.content
@@ -60,10 +82,10 @@ export async function POST(req: Request) {
     }
 }
 
-export function transformExternalResponse(result: any) {
+export function transformExternalResponse(result: ChatResponse) {
     const answer: string = result?.answer ?? "AI의 답변입니다.";
-    const chatType: "cart" | "chat" | "recipe" = result?.chatType;
-    const originalRecipes: any[] = Array.isArray(result?.recipes) ? result.recipes : [];
+    const chatType: "cart" | "chat" | "recipe" | undefined = result?.chatType;
+    const originalRecipes: ChatResponse['recipes'] = Array.isArray(result?.recipes) ? result.recipes : [];
     const type = chatType === "cart" ? "cart" : "recipe";
 
     if (type === "cart") {
@@ -75,11 +97,11 @@ export function transformExternalResponse(result: any) {
         };
     } else {
         console.log("[transform] 'recipe' 타입으로 처리.");
-        const transformedRecipes = originalRecipes.map((recipe: any, index: number) => {
+        const transformedRecipes = originalRecipes.map((recipe, index) => {
             const foodName = recipe.food_name || recipe.title || `Recipe ${index + 1}`;
             const source = recipe.source || "text";
             const rawIngredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
-            const normalizedIngredients = rawIngredients.map((ing: any) => {
+            const normalizedIngredients = rawIngredients.map((ing) => {
                 if (typeof ing === "string") {
                     return {item: ing, amount: "", unit: ""};
                 }

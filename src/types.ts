@@ -38,7 +38,7 @@ export interface ChatMessage {
 
 // ChatSession은 새로운 ChatMessage를 사용하도록 업데이트합니다.
 export interface ChatSession {
-  id: number
+  id: string
   title: string
   messages: ChatMessage[]
   lastUpdated: Date

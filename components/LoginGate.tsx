@@ -6,6 +6,13 @@ import { signInWithGoogleAndGetIdToken } from "@/lib/firebase"
 
 const BACKEND_BASE = process.env.NEXT_PUBLIC_BACKEND_BASE || "http://localhost:8080"
 
+// 서버 응답 타입 정의
+interface AuthResponse {
+  accessToken?: string;
+  token?: string;
+  [key: string]: unknown;
+}
+
 export function LoginGate({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -29,13 +36,14 @@ export function LoginGate({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({}),
       })
       if (!res.ok) throw new Error("서버 인증 실패")
-      const data = await res.json()
+      const data: AuthResponse = await res.json()
       const accessToken = data?.accessToken || data?.token
       if (!accessToken) throw new Error("토큰 응답 누락")
       localStorage.setItem("jwtToken", accessToken)
       setToken(accessToken)
-    } catch (e: any) {
-      alert(e?.message || "로그인 실패")
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : "로그인 실패"
+      alert(errorMessage)
     } finally {
       setLoading(false)
     }

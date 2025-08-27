@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { MessageSquare, Send, ChevronRight, ChevronLeft, ShoppingCart, ChefHat, Loader2, Paperclip, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ChatMessage } from "../src/types"
+import Image from "next/image"
 
 interface RightChatSidebarProps {
   collapsed: boolean
@@ -165,10 +166,10 @@ export function RightChatSidebar({
               ) : (
                 <div className="space-y-4 pb-4">
                   {messages.map((msg, index) => {
-                    const role = (msg as any).role ?? (msg as any).type
+                    const role = msg.role
                     const isUser = role === "user"
                     const imageUrl = msg.imageUrl
-                    const ts = typeof (msg as any).timestamp === "number" ? (msg as any).timestamp : new Date((msg as any).timestamp as any).getTime()
+                    const ts = typeof msg.timestamp === "number" ? msg.timestamp : new Date(msg.timestamp as string | Date).getTime()
                     return (
                       <div
                         key={index}
@@ -178,11 +179,15 @@ export function RightChatSidebar({
                         )}
                       >
                         {imageUrl && (
-                          <img
-                            src={imageUrl}
-                            alt="User upload"
-                            className="rounded-md mb-2 max-w-full h-auto max-h-60 object-contain"
-                          />
+                          <div className="relative mb-2 max-w-full h-auto max-h-60">
+                            <Image
+                              src={imageUrl}
+                              alt="User upload"
+                              width={240}
+                              height={240}
+                              className="rounded-md object-contain max-h-60 w-auto"
+                            />
+                          </div>
                         )}
                         {msg.content && (
                           <div className="whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-h-[40vh]">{msg.content}</div>
@@ -215,7 +220,13 @@ export function RightChatSidebar({
           <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
             {imagePreview && (
               <div className="mb-2 relative w-24 h-24">
-                <img src={imagePreview} alt="Image preview" className="rounded-md object-cover w-full h-full" />
+                <Image 
+                  src={imagePreview} 
+                  alt="Image preview" 
+                  width={96}
+                  height={96}
+                  className="rounded-md object-cover w-full h-full" 
+                />
                 <Button
                   type="button"
                   variant="destructive"

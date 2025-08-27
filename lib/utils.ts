@@ -27,7 +27,7 @@ export async function generateChatIdForUser(userId: string, timestamp?: number):
   const ts = String(timestamp ?? Date.now())
   const raw = `${ts}-${userId}`
   // 브라우저 Web Crypto API 사용
-  if (typeof crypto !== "undefined" && (crypto as any).subtle?.digest) {
+  if (typeof crypto !== "undefined" && crypto.subtle?.digest) {
     const enc = new TextEncoder()
     const data = enc.encode(raw)
     const digest = await crypto.subtle.digest("SHA-256", data)
