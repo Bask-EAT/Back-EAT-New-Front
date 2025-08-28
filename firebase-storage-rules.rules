@@ -1,0 +1,23 @@
+rules_version = 'v2';
+
+// Firebase Storage 보안 규칙
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 기본적으로 모든 접근 차단
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+    
+    // extension 폴더의 파일들은 공개적으로 읽기 가능
+    match /extension/{fileName} {
+      allow read: if true;  // 누구나 다운로드 가능
+      allow write: if false; // 쓰기는 불가
+    }
+    
+    // 기타 공개 폴더들 (필요시 추가)
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
