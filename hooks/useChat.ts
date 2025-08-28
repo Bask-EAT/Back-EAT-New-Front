@@ -14,7 +14,7 @@ import {
     appendMessage, appendRecipes, appendCartItems, getChat, toggleBookmark, ChatMessage as DBChatMessage
 } from "@/lib/chat-service"
 import {updateChatTitle, extractNumberedSuggestions, mapSelectionToDish, isNumericSelection} from "@/src/chat"
-import {postJson, postMultipart, getJson, searchIngredient, searchProductsByText} from "@/lib/api"
+import {postMultipart, searchProductsByText} from "@/lib/api"
 
 type ChatServiceResponse = {
     chatType: "chat" | "recipe" | "cart"  // 3가지 타입 중 하나
@@ -151,6 +151,7 @@ export function useChat() {
                 }
                 setChatHistory((prev) => [newChat, ...prev])
                 setCurrentChatId(newChatId)
+                setServerChatId(newChatId); 
                 setError(null) // 성공 시 에러 상태 초기화
             } catch (e: any) {
                 console.error('[CHAT] 새 채팅 생성 오류:', e)
@@ -719,20 +720,20 @@ export function useChat() {
             // }
 
             // 좌측 채팅 목록 최종 업데이트 (백엔드에서 반환된 채팅 ID 사용)
-            setChatHistory((prev) => {
-                const effectiveChatId = returnedChatId || chatId;
-                if (effectiveChatId) {
-                    const me: UIChatSession = {
-                        id: effectiveChatId,
-                        title: updateChatTitle(finalMessages),
-                        messages: finalMessages,
-                        lastUpdated: new Date(),
-                    };
-                    const others = prev.filter((c) => c.id !== effectiveChatId);
-                    return [me, ...others];
-                }
-                return prev;
-            });
+            // setChatHistory((prev) => {
+            //     const effectiveChatId = returnedChatId || chatId;
+            //     if (effectiveChatId) {
+            //         const me: UIChatSession = {
+            //             id: effectiveChatId,
+            //             title: updateChatTitle(finalMessages),
+            //             messages: finalMessages,
+            //             lastUpdated: new Date(),
+            //         };
+            //         const others = prev.filter((c) => c.id !== effectiveChatId);
+            //         return [me, ...others];
+            //     }
+            //     return prev;
+            // });
 
             // 응답 타입에 따른 뷰 전환 확인
             console.log("현재 뷰:", currentView);
