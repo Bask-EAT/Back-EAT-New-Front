@@ -1,0 +1,188 @@
+"use client"
+
+import {getAuthHeaders} from "@/lib/auth"
+
+const BASE = process.env.NEXT_PUBLIC_BACKEND_BASE || "http://localhost:8080"
+
+export async function backendFetch(path: string, init: RequestInit = {}): Promise<Response> {
+    const headers: HeadersInit = {
+        "Content-Type": "application/json",
+        ...(init.headers || {}),
+        ...getAuthHeaders(),
+    }
+
+    const res = await fetch(`${BASE}${path}`, {...init, headers, credentials: "include"})
+
+    if (res.status === 401) {
+        try {
+            localStorage.removeItem("jwtToken")
+        } catch {
+        }
+        if (typeof window !== "undefined") {
+            try {
+                window.location.href = "/"
+            } catch {
+            }
+        }
+        throw new Error("Unauthorized")
+    }
+
+    return res
+}
+
+export async function getJson<T>(path: string): Promise<T> {
+    const res = await backendFetch(path)
+    if (!res.ok) throw new Error(await safeText(res))
+    return res.json() as Promise<T>
+}
+
+export async function postJson<T>(path: string, body: unknown): Promise<T> {
+    const res = await backendFetch(path, {method: "POST", body: JSON.stringify(body)})
+    console.log("-------postJon함수 실행 >> ",res)
+    if (!res.ok) throw new Error(await safeText(res))
+    return res.json() as Promise<T>
+}
+
+export async function deleteJson<T>(path: string): Promise<T> {
+    const res = await backendFetch(path, {method: "DELETE"})
+    if (!res.ok) throw new Error(await safeText(res))
+    return res.json() as Promise<T>
+}
+
+// 채팅방의 레시피/카트 목록 조회
+export async function getChatLists(chatId: string): Promise<{
+    recipeList: Array<{
+        messageId: string;
+        content: string;
+        timestamp: number;
+        recipes: any[];
+    }>;
+    cartList: Array<{
+        messageId: string;
+        content: string;
+        timestamp: number;
+        items: any[];
+    }>;
+}> {
+    return getJson(`/api/chat/${chatId}/lists`);
+}
+
+// 북마크 관련 API 함수들
+export interface BookmarkRequest {
+    recipeId: string;
+    recipeName: string;
+    recipeDescription?: string;
+    ingredients?: string[];
+    cookingMethods?: string[];
+    cookingTime?: string;
+    servings?: string;
+    difficulty?: string;
+    category?: string;
+}
+
+export interface BookmarkResponse {
+    success: boolean;
+    message: string;
+    data?: any[];
+    count?: number;
+    isBookmarked?: boolean;
+}
+
+// 사용자의 모든 북마크 조회
+export async function getUserBookmarks(): Promise<BookmarkResponse> {
+    return getJson("/api/bookmarks");
+}
+
+// 레시피 북마크 추가
+export async function addBookmark(recipe: BookmarkRequest): Promise<BookmarkResponse> {
+    return postJson("/api/bookmarks", recipe);
+}
+
+// 레시피 북마크 제거
+export async function removeBookmark(recipeId: string): Promise<BookmarkResponse> {
+    return deleteJson(`/api/bookmarks/${recipeId}`);
+}
+
+// 레시피 북마크 여부 확인
+export async function checkBookmark(recipeId: string): Promise<BookmarkResponse> {
+    return getJson(`/api/bookmarks/${recipeId}/check`);
+}
+
+// 레시피 북마크 토글 (추가/제거)
+export async function toggleBookmark(recipeId: string, recipe: BookmarkRequest): Promise<BookmarkResponse> {
+    return postJson(`/api/bookmarks/${recipeId}/toggle`, recipe);
+}
+
+async function safeText(res: Response): Promise<string> {
+    try {
+        return await res.text()
+    } catch {
+        return `${res.status} ${res.statusText}`
+    }
+}
+
+
+// ✨ FormData 전송 함수 (새로 추가)
+export async function postMultipart<T>(path: string, formData: FormData): Promise<T> {
+  const token = localStorage.getItem("jwtToken");
+  const headers: HeadersInit = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  
+  const res = await fetch(path, {
+    method: "POST",
+    headers, // 인증 헤더 추가
+    body: formData,
+  });
+  console.log("-------postMultipart함수 실행 >> ",res)
+
+  if (!res.ok) {
+      const errorText = await res.text();
+      // 에러 응답이 JSON 형태일 수 있으므로 파싱 시도
+      try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.message || errorJson.error || errorText);
+      } catch (e) {
+          throw new Error(errorText);
+      }
+  }
+  return res.json() as Promise<T>;
+}
+
+// 재료 검색을 위한 새로운 API 함수
+export async function searchIngredient(chatId: string, ingredientName: string): Promise<any> {
+    return postJson(`/api/chat/${chatId}/ingredient/search`, {
+        ingredient_name: ingredientName
+    });
+}
+
+const INGREDIENT_SERVICE_URL = process.env.NEXT_PUBLIC_INGREDIENT_SERVICE_URL || "http://localhost:8004";
+
+/**
+ * ingredient-service에 직접 텍스트 검색을 요청합니다.
+ * @param query 검색할 재료명
+ * @returns 검색 결과 Promise
+ */
+export async function searchProductsByText(query: string): Promise<any> {
+    const res = await fetch(`${INGREDIENT_SERVICE_URL}/search/text`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query }),
+    });
+    console.log("-------searchProductsByText함수 실행 >> ",res)
+
+
+    if (!res.ok) {
+        const errorText = await res.text();
+        try {
+            const errorJson = JSON.parse(errorText);
+            throw new Error(errorJson.detail || errorText);
+        } catch (e) {
+            throw new Error(errorText);
+        }
+    }
+    return res.json();
+}

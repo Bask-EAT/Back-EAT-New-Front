@@ -1,0 +1,201 @@
+export const dynamic = 'force-dynamic';
+
+// 응답 데이터 타입 정의
+interface ChatResponse {
+  content?: string;
+  answer?: string;
+  chatType?: "cart" | "chat" | "recipe";
+  recipes?: Array<{
+    food_name?: string;
+    title?: string;
+    source?: string;
+    ingredients?: Array<{
+      item?: string;
+      name?: string;
+      product_name?: string;
+      amount?: string;
+      unit?: string;
+    }>;
+    recipe?: string[];
+    steps?: string[];
+    product?: Array<{
+      product_name: string;
+      price: number;
+      image_url: string;
+      product_address: string;
+    }>; // cart 타입을 위한 상품 정보 추가
+  }>;
+  [key: string]: unknown;
+}
+
+export async function POST(req: Request) {
+    let chat_id: string | null = null;
+    
+    try {
+        // Content-Type에 따라 FormData 또는 JSON 처리
+        const contentType = req.headers.get("content-type");
+        let message: string | null = null;
+        let image: File | null = null;
+
+        if (contentType?.includes("multipart/form-data")) {
+            // FormData 처리 (이미지 포함)
+            const formData = await req.formData();
+            message = formData.get("message") as string | null;
+            chat_id = formData.get("chat_id") as string | null;
+            image = formData.get("image") as File | null;
+        } else {
+            // JSON 처리
+            const body = await req.json();
+            message = body.message || null;
+            chat_id = body.chat_id || null;
+            image = null; // JSON에서는 이미지 처리 불가
+        }
+
+        if ((!message || !String(message).trim()) && !image) {
+            return Response.json({error: "message or image is required"}, {status: 400});
+        }
+
+        const authHeader = req.headers.get("authorization");
+        if (!authHeader?.startsWith("Bearer ")) {
+            return Response.json({error: "Unauthorized"}, {status: 401});
+        }
+        const token = authHeader.replace("Bearer ", "");
+
+        const AI_SERVER_URL = "http://localhost:8080";
+        const aiServerFormData = new FormData();
+
+        // 백엔드 AI 서버로 보낼 데이터 추가
+        if (message) aiServerFormData.append("message", message);
+        if (chat_id) aiServerFormData.append("chat_id", chat_id);
+        if (image) aiServerFormData.append("image", image);
+
+        // 바로 /api/chat 요청 후 응답을 반환하도록 변경, 백엔드 AI 서버로 전송
+        const chatResponse = await fetch(`${AI_SERVER_URL}/api/chat`, {
+            headers: {"Authorization": `Bearer ${token}`},
+            method: "POST",
+            body: aiServerFormData,
+        });
+
+        const responseText = await chatResponse.text();
+        console.log("API가 실제로 받은 메시지. Raw chat response:", responseText);
+
+        if (!chatResponse.ok) {
+            throw new Error(`Chat request failed: ${chatResponse.status} - ${responseText}`);
+        }
+
+        // 응답 파싱 및 필드 정규화
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error("Failed to parse response as JSON:", parseError);
+            // JSON 파싱 실패 시 텍스트를 content로 사용
+            result = { content: responseText };
+        }
+
+        console.log("백엔드 원본 응답:", result);
+        console.log("백엔드 응답 타입:", typeof result);
+        console.log("백엔드 응답 payload:", result?.payload);
+
+        // 백엔드 응답 구조 정규화
+        // payload 안에 chatType, content/answer, recipes가 들어있음
+        if (result && typeof result === "object" && result.payload) {
+            const payload = result.payload;
+            console.log("Payload 내용:", payload);
+            
+            // chatType이 "chat"인 경우 화면 변화가 없어야 함
+            const chatType = payload.chatType || "chat";
+            console.log("백엔드에서 받은 chatType:", chatType);
+            
+            // payload에서 필요한 정보 추출
+            const normalizedResult = {
+                chatType: chatType,
+                content: payload.content || payload.answer || result.message || "AI 응답을 받았습니다.",
+                recipes: Array.isArray(payload.recipes) ? payload.recipes : [],
+                chat_id: result.chat_id,
+                jobId: result.job_id,
+                timestamp: result.timestamp,
+                payload: payload
+            };
+            
+            console.log("정규화된 응답:", normalizedResult);
+            console.log("chatType이 'chat'인 경우 화면 변화 없음:", chatType === "chat");
+            return Response.json(normalizedResult);
+        }
+
+        // payload가 없는 경우 백엔드 응답 구조 그대로 사용
+        console.log("payload가 없는 응답 -> 백엔드 응답 구조 그대로 사용");
+        console.log("백엔드에서 받은 chatType:", result.chatType);
+        
+        const defaultResult = {
+            chatType: result.chatType || "chat",
+            content: result.message || result.content || result.answer || "AI 응답을 받았습니다.",
+            recipes: Array.isArray(result.recipes) ? result.recipes : [],
+            chat_id: result.chat_id,
+            timestamp: result.timestamp
+        };
+        
+        console.log("최종 정규화된 응답:", defaultResult);
+        return Response.json(defaultResult);
+
+    } catch (error) {
+        console.error("Chat API error:", error);
+        return Response.json(
+            {
+                chatType: "chat",
+                content: "죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.",
+                error: error instanceof Error ? error.message : "Failed to process chat message",
+                recipes: [],
+                chat_id: chat_id,
+            },
+            {status: 500}
+        );
+    }
+}
+
+
+// 기존 transformExternalResponse 함수 유지 (하위 호환성)
+export function transformExternalResponse(result: ChatResponse) {
+    const answer: string = result?.answer ?? "AI의 답변입니다.";
+    const chatType: "cart" | "chat" | "recipe" | undefined = result?.chatType;
+    const originalRecipes: ChatResponse['recipes'] = Array.isArray(result?.recipes) ? result.recipes : [];
+    const type = chatType === "cart" ? "cart" : "recipe";
+
+    if (type === "cart") {
+        console.log("[transform] 'cart' 타입으로 처리.");
+        return {
+            type: "cart" as const,
+            content: answer,
+            recipes: originalRecipes,
+        };
+    } else {
+        console.log("[transform] 'recipe' 타입으로 처리.");
+        const transformedRecipes = originalRecipes.map((recipe, index) => {
+            const foodName = recipe.food_name || recipe.title || `Recipe ${index + 1}`;
+            const source = recipe.source || "text";
+            const rawIngredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+            const normalizedIngredients = rawIngredients.map((ing) => {
+                if (typeof ing === "string") {
+                    return {item: ing, amount: "", unit: ""};
+                }
+                return {
+                    item: ing.item || ing.name || ing.product_name || "",
+                    amount: ing.amount || "",
+                    unit: ing.unit || "",
+                };
+            });
+            return {
+                id: `recipe_${Date.now()}_${index}`,
+                food_name: foodName,
+                source,
+                recipe: Array.isArray(recipe.recipe) ? recipe.recipe : Array.isArray(recipe.steps) ? recipe.steps : [],
+                ingredients: normalizedIngredients,
+            };
+        });
+        return {
+            type: "recipe" as const,
+            content: answer,
+            recipes: transformedRecipes,
+        };
+    }
+}
