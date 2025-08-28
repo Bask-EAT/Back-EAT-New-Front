@@ -115,7 +115,7 @@ export function RecipeExplorationScreen({
       <div
         className={cn(
           "fixed top-4 w-64 z-10 transition-all duration-300",
-          isRightSidebarOpen ? "right-84" : "right-16",
+          isRightSidebarOpen ? "right-124" : "right-16",
         )}
       >
         <Card className="shadow-lg">
