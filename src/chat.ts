@@ -2,7 +2,7 @@ import type { ChatMessage } from "./types"
 
 // 메시지 타입 가드 함수
 function isUserMessage(message: ChatMessage): boolean {
-  return message.role === "user" || message.type === "user"
+  return message.role === "user"
 }
 
 // 메시지 배열을 받아 제목을 생성하는 순수 로직
