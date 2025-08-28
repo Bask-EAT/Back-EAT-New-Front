@@ -108,18 +108,18 @@ export class ChatService {
   }
 
   // 메시지 추가
-  async appendMessage(chatId: string, message: ChatMessage): Promise<void> {
-    try {
-      await postJson(`/api/chat/${chatId}/message`, {
-        role: message.role,
-        content: message.content,
-        timestamp: message.timestamp
-      })
-    } catch (error) {
-      console.error("메시지 저장 실패:", error)
-      throw new Error("메시지 저장에 실패했습니다.")
-    }
-  }
+  // async appendMessage(chatId: string, message: ChatMessage): Promise<void> {
+  //   try {
+  //     await postJson(`/api/chat/${chatId}/message`, {
+  //       role: message.role,
+  //       content: message.content,
+  //       timestamp: message.timestamp
+  //     })
+  //   } catch (error) {
+  //     console.error("메시지 저장 실패:", error)
+  //     throw new Error("메시지 저장에 실패했습니다.")
+  //   }
+  // }
 
   // 레시피 추가
   async appendRecipes(chatId: string, recipes: DBRecipe[]): Promise<void> {
@@ -204,7 +204,7 @@ export const chatService = ChatService.getInstance()
 export const createChat = chatService.createChat.bind(chatService)
 export const getChat = chatService.getChat.bind(chatService)
 export const getAllChatsDesc = chatService.getAllChatsDesc.bind(chatService)
-export const appendMessage = chatService.appendMessage.bind(chatService)
+// export const appendMessage = chatService.appendMessage.bind(chatService)
 export const appendRecipes = chatService.appendRecipes.bind(chatService)
 export const appendCartItems = chatService.appendCartItems.bind(chatService)
 export const getAllBookmarkIds = chatService.getAllBookmarkIds.bind(chatService)

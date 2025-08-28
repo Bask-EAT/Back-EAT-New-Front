@@ -424,7 +424,6 @@ export function useChat() {
                     return prev;
                 });
             }
-            console.log("-------------------AI 응답:", data)
 
             const raw = data as any
             console.log("-------------------AI 응답:", raw)
@@ -441,7 +440,7 @@ export function useChat() {
             let assistantMessage: UIChatMessage;
 
             console.log("=== AI 응답 처리 시작 ===");
-            console.log("Raw response:", raw);
+            // console.log("Raw response:", raw);
 
             // 백엔드 응답 구조 확인
             // 백엔드에서는 ChatResponse(status, result) 형태로 응답
@@ -639,60 +638,60 @@ export function useChat() {
                 console.log("chatType 처리 완료:", chatType);
 
                 // --- 4-2. 이전 스키마 (폴백) 처리 ---
-            } else {
-                console.log("이전 스키마로 처리 (폴백)");
-                const parsedResponse: AIResponse = raw;
-                assistantMessage = {
-                    role: "assistant",
-                    content: parsedResponse.content || "AI 응답을 받았습니다.",
-                    timestamp: new Date(),
-                };
+            // } else {
+                // console.log("이전 스키마로 처리 (폴백)");
+                // const parsedResponse: AIResponse = raw;
+                // assistantMessage = {
+                //     role: "assistant",
+                //     content: parsedResponse.content || "AI 응답을 받았습니다.",
+                //     timestamp: new Date(),
+                // };
 
                 // 이전 스키마에 따른 UI 업데이트
-                if (parsedResponse.type === "recipe" && parsedResponse.recipes) {
-                    setCurrentView("recipe");
-                    // 기존 레시피 목록에 새로운 레시피 추가 (축적)
-                    setCurrentRecipes((prev) => {
-                        const existingIds = new Set(prev.map(r => r.name + r.description));
-                        const newRecipes = parsedResponse.recipes!.filter((r: any) => 
-                            !existingIds.has(r.name + r.description)
-                        );
-                        return [...prev, ...newRecipes];
-                    });
+                // if (parsedResponse.type === "recipe" && parsedResponse.recipes) {
+                    // setCurrentView("recipe");
+                    // // 기존 레시피 목록에 새로운 레시피 추가 (축적)
+                    // setCurrentRecipes((prev) => {
+                    //     const existingIds = new Set(prev.map(r => r.name + r.description));
+                    //     const newRecipes = parsedResponse.recipes!.filter((r: any) => 
+                    //         !existingIds.has(r.name + r.description)
+                    //     );
+                    //     return [...prev, ...newRecipes];
+                    // });
                     
-                    // chat-service를 사용하여 레시피 저장 (백엔드에서 반환된 채팅 ID 사용)
-                    try {
-                        const effectiveChatId = returnedChatId || chatId;
-                        if (effectiveChatId) {
-                            await appendRecipes(effectiveChatId, parsedResponse.recipes)
-                            console.log('[CHAT] 레시피 저장 완료 (이전 스키마)')
-                        } else {
-                            console.log('[CHAT] 채팅 ID가 없어서 레시피 저장 건너뜀 (이전 스키마)')
-                        }
-                    } catch (e) {
-                        console.error('[CHAT] 레시피 저장 실패 (이전 스키마):', e)
-                    }
-                } else if (parsedResponse.type === "cart" && parsedResponse.ingredients) {
-                    setCurrentView("cart");
-                    setCurrentIngredients(parsedResponse.ingredients);
+                    // // chat-service를 사용하여 레시피 저장 (백엔드에서 반환된 채팅 ID 사용)
+                    // try {
+                    //     const effectiveChatId = returnedChatId || chatId;
+                    //     if (effectiveChatId) {
+                    //         await appendRecipes(effectiveChatId, parsedResponse.recipes)
+                    //         console.log('[CHAT] 레시피 저장 완료 (이전 스키마)')
+                    //     } else {
+                    //         console.log('[CHAT] 채팅 ID가 없어서 레시피 저장 건너뜀 (이전 스키마)')
+                    //     }
+                    // } catch (e) {
+                    //     console.error('[CHAT] 레시피 저장 실패 (이전 스키마):', e)
+                    // }
+                // } else if (parsedResponse.type === "cart" && parsedResponse.ingredients) {
+                    // setCurrentView("cart");
+                    // setCurrentIngredients(parsedResponse.ingredients);
                     
-                    // chat-service를 사용하여 카트 아이템 저장 (백엔드에서 반환된 채팅 ID 사용)
-                    try {
-                        const effectiveChatId = returnedChatId || chatId;
-                        if (effectiveChatId) {
-                            await appendCartItems(effectiveChatId, parsedResponse.ingredients)
-                            console.log('[CHAT] 카트 아이템 저장 완료 (이전 스키마)')
-                        } else {
-                            console.log('[CHAT] 채팅 ID가 없어서 카트 아이템 저장 건너뜀 (이전 스키마)')
-                        }
-                    } catch (e) {
-                        console.error('[CHAT] 카트 아이템 저장 실패 (이전 스키마):', e)
-                    }
-                } else {
-                    setCurrentView("welcome");
-                }
-                const suggestions = extractNumberedSuggestions(parsedResponse.content);
-                setLastSuggestions(suggestions);
+                    // // chat-service를 사용하여 카트 아이템 저장 (백엔드에서 반환된 채팅 ID 사용)
+                    // try {
+                    //     const effectiveChatId = returnedChatId || chatId;
+                    //     if (effectiveChatId) {
+                    //         await appendCartItems(effectiveChatId, parsedResponse.ingredients)
+                    //         console.log('[CHAT] 카트 아이템 저장 완료 (이전 스키마)')
+                    //     } else {
+                    //         console.log('[CHAT] 채팅 ID가 없어서 카트 아이템 저장 건너뜀 (이전 스키마)')
+                    //     }
+                    // } catch (e) {
+                    //     console.error('[CHAT] 카트 아이템 저장 실패 (이전 스키마):', e)
+                    // }
+                // } else {
+                    // setCurrentView("welcome");
+                // }
+                // const suggestions = extractNumberedSuggestions(parsedResponse.content);
+                // setLastSuggestions(suggestions);
             }
 
             // ------------------
@@ -702,22 +701,22 @@ export function useChat() {
             console.log('최종적으로 AI 메시지 확인 (finalMessages) -------- ', finalMessages);
             
             // 메시지를 DB에 저장 (백엔드에서 반환된 채팅 ID 사용)
-            try {
-                const effectiveChatId = returnedChatId || chatId;
-                if (effectiveChatId) {
-                    // chat-service를 사용하여 AI 메시지 저장
-                    await appendMessage(effectiveChatId, {
-                        role: assistantMessage.role,
-                        content: assistantMessage.content,
-                        timestamp: (assistantMessage.timestamp as Date).getTime()
-                    })
-                    console.log('[CHAT] AI 메시지 저장 완료')
-                } else {
-                    console.log('[CHAT] 채팅 ID가 없어서 메시지 저장 건너뜀')
-                }
-            } catch (e) {
-                console.error("[CHAT] 메시지 저장 실패:", e);
-            }
+            // try {
+            //     const effectiveChatId = returnedChatId || chatId;
+            //     if (effectiveChatId) {
+            //         // chat-service를 사용하여 AI 메시지 저장
+            //         await appendMessage(effectiveChatId, {
+            //             role: assistantMessage.role,
+            //             content: assistantMessage.content,
+            //             timestamp: (assistantMessage.timestamp as Date).getTime()
+            //         })
+            //         console.log('[CHAT] AI 메시지 저장 완료')
+            //     } else {
+            //         console.log('[CHAT] 채팅 ID가 없어서 메시지 저장 건너뜀')
+            //     }
+            // } catch (e) {
+            //     console.error("[CHAT] 메시지 저장 실패:", e);
+            // }
 
             // 좌측 채팅 목록 최종 업데이트 (백엔드에서 반환된 채팅 ID 사용)
             setChatHistory((prev) => {
