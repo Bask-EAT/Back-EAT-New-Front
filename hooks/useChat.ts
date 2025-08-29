@@ -758,33 +758,28 @@ export function useChat() {
 
     // 카트에 추가 핸들러
     const handleAddToCart = (ingredient: Ingredient) => {
+        // 기존 카트 아이템에 추가 (중복 체크)
         setCartItems((prev) => {
-            const exists = prev.some((item) => item.item === ingredient.item)
+            const exists = prev.some((item) => item.food_name === ingredient.item)
             if (exists) return prev
             return [...prev, ingredient]
         })
-        ;(async () => {
-            try {
-                if (currentChatId) {
-                    // 1. 임베딩 서버 검색 API 호출 (백엔드에서 이미 저장했으므로 프론트엔드 저장 생략)
-                    try {
-                        const searchResult = await searchIngredient(currentChatId, ingredient.item)
-                        console.log('[CHAT] 재료 검색 완료:', searchResult)
-                    } catch (searchError: any) {
-                        console.error('[CHAT] 재료 검색 실패:', searchError)
-                        // 검색 실패해도 카트 저장은 계속 진행
-                    }
-                    
-                    // 2. 백엔드에서 이미 저장했으므로 프론트엔드 저장 생략
-                    console.log('[CHAT] 백엔드에서 이미 카트 아이템을 저장했으므로 프론트엔드 저장 생략')
-                }
-            } catch (e: any) {
-                console.error('[CHAT] 카트 아이템 추가 실패:', e)
-                setError(e?.message || "카트 저장 실패")
-            }
-        })()
-        // Switch to cart view when adding items
-        setCurrentView("cart")
+        
+        // 화면 전환 없이 카트 아이템만 추가
+        console.log('[CHAT] 카트 아이템 추가됨:', ingredient.item)
+    }
+    
+    // 카트에 상품 추가 핸들러 (API 응답 데이터 포함)
+    const handleAddProductToCart = (cartRecipe: Recipe) => {
+        // 기존 카트 아이템에 추가 (중복 체크)
+        setCartItems((prev) => {
+            const exists = prev.some((item) => item.food_name === cartRecipe.food_name)
+            if (exists) return prev
+            return [...prev, cartRecipe]
+        })
+        
+        // 화면 전환 없이 카트 아이템만 추가
+        console.log('[CHAT] 카트에 상품 추가됨:', cartRecipe.food_name)
     }
 
 
@@ -847,6 +842,7 @@ export function useChat() {
         handleChatSelect,
         handleBookmarkToggle,
         handleAddToCart,
+        handleAddProductToCart,
         handleGenerateCart,
         handleViewChange,
     }

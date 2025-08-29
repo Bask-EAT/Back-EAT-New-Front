@@ -47,6 +47,7 @@ export default function HomePage() {
     handleChatSelect,
     handleBookmarkToggle,
     handleAddToCart,
+    handleAddProductToCart,
     handleGenerateCart,
     handleViewChange,
   } = useChat()
@@ -99,6 +100,7 @@ export default function HomePage() {
               bookmarkedRecipes={bookmarkedRecipes}
               onBookmarkToggle={handleBookmarkToggle}
               onAddToCart={(ing) => handleAddToCart({ item: ing.name, amount: ing.amount, unit: ing.unit })}
+              onAddProductToCart={handleAddProductToCart}
               isRightSidebarOpen={!rightSidebarCollapsed}
               currentChatId={currentChatId}
             />

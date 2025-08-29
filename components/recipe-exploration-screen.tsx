@@ -24,6 +24,7 @@ interface RecipeExplorationScreenProps {
   bookmarkedRecipes: string[]
   onBookmarkToggle: (recipeId: string) => void
   onAddToCart: (ingredient: { name: string; amount: string; unit: string }) => void
+  onAddProductToCart?: (cartRecipe: any) => void
   isRightSidebarOpen?: boolean
   currentChatId?: string | null
 }
@@ -33,6 +34,7 @@ export function RecipeExplorationScreen({
   bookmarkedRecipes = [],
   onBookmarkToggle,
   onAddToCart,
+  onAddProductToCart,
   isRightSidebarOpen = false,
   currentChatId,
 }: RecipeExplorationScreenProps) {
@@ -221,7 +223,29 @@ export function RecipeExplorationScreen({
                                     foodName: ingredient.name
                                   });
                                   console.log('장바구니 추가 성공:', response);
-                                  // 성공 메시지 표시 또는 다른 UI 업데이트
+                                  
+                                  // 응답 데이터를 onAddProductToCart prop으로 전달하여 UI 업데이트
+                                  if (response.products && response.products.length > 0) {
+                                    // API 응답의 상품 데이터를 Recipe 형태로 변환
+                                    const cartRecipe = {
+                                      source: "ingredient_search",
+                                      food_name: ingredient.name,
+                                      product: response.products.map((product: any) => ({
+                                        product_name: product.product_name,
+                                        price: product.price,
+                                        image_url: product.image_url,
+                                        product_address: product.product_address
+                                      })),
+                                      recipe: []
+                                    };
+                                    
+                                    // onAddProductToCart 호출하여 UI 업데이트
+                                    if (onAddProductToCart) {
+                                      onAddProductToCart(cartRecipe);
+                                    }
+                                    
+                                    console.log('카트에 추가된 상품:', cartRecipe);
+                                  }
                                 } catch (error) {
                                   console.error('장바구니 추가 실패:', error);
                                   // 에러 메시지 표시
@@ -232,7 +256,7 @@ export function RecipeExplorationScreen({
                             }}
                             className="ml-2"
                           >
-                            <Plus className="w-4 h-4 mr-1" />
+                                                        <Plus className="w-4 h-4 mr-1" />
                             Add
                           </Button>
                         </div>
