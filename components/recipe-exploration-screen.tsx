@@ -127,7 +127,7 @@ export function RecipeExplorationScreen({
           </CardHeader>
           <CardContent>
             {/* 레시피 리스트 전용 스크롤 */}
-            <ScrollArea className="h-[calc(100vh-10rem)] pr-2">
+            <ScrollArea className="h-50 pr-2">
               <div className="space-y-2">
                 {recipes.map((recipe, index) => (
                   <div

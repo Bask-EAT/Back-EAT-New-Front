@@ -29,7 +29,7 @@ type ChatServiceResponse = {
 }
 
 export function useChat() {
-    const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart">("welcome")
+    const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart" | "bookmark">("welcome")
     const [chatHistory, setChatHistory] = useState<UIChatSession[]>([])
     const [bookmarkedRecipes, setBookmarkedRecipes] = useState<string[]>([])
     // UUID 기반 채팅방 ID로 변경
@@ -762,21 +762,58 @@ export function useChat() {
 
     // 북마크 토글 핸들러
     const handleBookmarkToggle = (recipeId: string) => {
-        // 현재 화면의 레시피 중 대상 찾기
-        const recipe = currentRecipes.find((r) => r.id === recipeId)
-        if (!recipe) return
-            ;
+        console.log("북마크 클릭 - ", recipeId)
+        // 1. 현재 recipeId가 이미 북마크 목록에 있는지 확인합니다.
+        const isAlreadyBookmarked = bookmarkedRecipes.includes(recipeId);
+
+        // 2. 확인된 상태에 따라 UI를 즉시 업데이트합니다. (Optimistic Update)
+        if (isAlreadyBookmarked) {
+            // 이미 북마크 되어 있다면 -> 목록에서 제거
+            setBookmarkedRecipes((prev) => prev.filter((id) => id !== recipeId));
+        } else {
+            // 북마크 되어 있지 않다면 -> 목록에 추가
+            setBookmarkedRecipes((prev) => [...prev, recipeId]);
+        }
+
+        // 3. 실제 DB와 상태를 동기화하는 비동기 로직을 실행합니다.
+        //    UI는 이미 변경되었으므로, 이 함수의 반환값은 더 이상 UI 업데이트에 사용하지 않습니다.
         (async () => {
+            const recipe = currentRecipes.find((r) => r.id === recipeId);
+            if (!recipe) return;
+
             try {
-                const toggled = await toggleBookmark(recipe as unknown as DBRecipe)
-                setBookmarkedRecipes((prev) =>
-                    toggled ? [...new Set([...prev, recipeId])] : prev.filter((id) => id !== recipeId),
-                )
+                await toggleBookmark(recipe as unknown as DBRecipe);
+                // 성공! 아무것도 할 필요가 없습니다.
             } catch (e: any) {
-                console.error(e)
-                setError(e?.message || "북마크 저장 실패")
+                console.error("북마크 업데이트 실패:", e);
+                setError(e?.message || "북마크 저장에 실패했습니다.");
+
+                // 🚨 에러 발생 시, UI를 원래 상태로 되돌립니다. (Rollback)
+                if (isAlreadyBookmarked) {
+                    // 제거했던 것을 다시 추가
+                    setBookmarkedRecipes((prev) => [...prev, recipeId]);
+                } else {
+                    // 추가했던 것을 다시 제거
+                    setBookmarkedRecipes((prev) => prev.filter((id) => id !== recipeId));
+                }
             }
-        })()
+        })();
+
+        // 현재 화면의 레시피 중 대상 찾기
+        // const recipe = currentRecipes.find((r) => r.id === recipeId)
+        // if (!recipe) return
+        //     ;
+        // (async () => {
+        //     try {
+        //         const toggled = await toggleBookmark(recipe as unknown as DBRecipe)
+        //         setBookmarkedRecipes((prev) =>
+        //             toggled ? [...new Set([...prev, recipeId])] : prev.filter((id) => id !== recipeId),
+        //         )
+        //     } catch (e: any) {
+        //         console.error(e)
+        //         setError(e?.message || "북마크 저장 실패")
+        //     }
+        // })()
     }
 
 
@@ -891,7 +928,7 @@ export function useChat() {
 
 
     // 뷰 변경 핸들러
-    const handleViewChange = (view: "welcome" | "recipe" | "cart") => {
+    const handleViewChange = (view: "welcome" | "recipe" | "cart" | "bookmark") => {
         setCurrentView(view)
         setError(null)
     }

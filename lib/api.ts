@@ -165,7 +165,7 @@ const INGREDIENT_SERVICE_URL = process.env.NEXT_PUBLIC_INGREDIENT_SERVICE_URL ||
  * @returns 검색 결과 Promise
  */
 export async function searchProductsByText(query: string): Promise<any> {
-    const res = await fetch(`${INGREDIENT_SERVICE_URL}/search/text`, {
+    const res = await fetch(`${INGREDIENT_SERVICE_URL}/search/crossmodal-text`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
