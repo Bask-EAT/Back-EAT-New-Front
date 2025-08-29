@@ -113,6 +113,7 @@ export default function HomePage() {
           {currentView === "bookmark" && (
             <BookmarkList
               isRightSidebarOpen={!rightSidebarCollapsed}
+              bookmarkedRecipes={bookmarkedRecipes}
             />
           )}
         </div>

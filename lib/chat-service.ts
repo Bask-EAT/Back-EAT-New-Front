@@ -20,9 +20,24 @@ export type DBRecipe = {
   instructions: string[]
   tags: string[]
   image?: string
+  food_name?: string // 상품 검색 결과의 카테고리명
+  product?: Array<{ 
+    product_name: string; 
+    price: number; 
+    image_url: string; 
+    product_address: string; 
+    food_name: string;
+  }> // 상품 목록
 }
 
-export type DBCartItem = { name: string; amount: string; unit: string }
+export type DBCartItem = { 
+  product_name: string; 
+  price: number; 
+  image_url: string; 
+  product_address: string; 
+  food_name: string; // 상품이 속한 카테고리명
+  quantity?: number;
+}
 
 export type ChatRecord = {
   id: string  // UUID 문자열로 변경
@@ -71,8 +86,7 @@ export class ChatService {
       
       return {
         id: data.chat?.id || id, // UUID 문자열을 그대로 사용
-        // title: data.chat?.title || "새로운 대화", // 채팅방 제목
-        title: data.chat?.title, // 채팅방 제목
+        title: data.chat?.title || "새로운 대화", // 채팅방 제목
         timestamp: new Date(data.chat?.updatedAt).getTime() || Date.now(),
         messages: (data.messages || []).map((msg: any) => ({
           role: msg.role,
@@ -98,8 +112,7 @@ export class ChatService {
       // ConversationSummary를 ChatRecord로 변환
       return chats.map((chat: any) => ({
         id: chat.id, // UUID 문자열을 그대로 사용
-        // title: chat.title || "새로운 대화", // 채팅방 제목
-        title: chat.title, // 채팅방 제목
+        title: chat.title || "새로운 대화", // 채팅방 제목
         timestamp: new Date(chat.updatedAt).getTime(), // updatedAt을 timestamp로 변환
         messages: [] // 메시지는 필요할 때 별도로 로드
       }))
@@ -110,18 +123,18 @@ export class ChatService {
   }
 
   // 메시지 추가
-  // async appendMessage(chatId: string, message: ChatMessage): Promise<void> {
-  //   try {
-  //     await postJson(`/api/chat/${chatId}/message`, {
-  //       role: message.role,
-  //       content: message.content,
-  //       timestamp: message.timestamp
-  //     })
-  //   } catch (error) {
-  //     console.error("메시지 저장 실패:", error)
-  //     throw new Error("메시지 저장에 실패했습니다.")
-  //   }
-  // }
+  async appendMessage(chatId: string, message: ChatMessage): Promise<void> {
+    try {
+      await postJson(`/api/chat/${chatId}/message`, {
+        role: message.role,
+        content: message.content,
+        timestamp: message.timestamp
+      })
+    } catch (error) {
+      console.error("메시지 저장 실패:", error)
+      throw new Error("메시지 저장에 실패했습니다.")
+    }
+  }
 
   // 레시피 추가
   async appendRecipes(chatId: string, recipes: DBRecipe[]): Promise<void> {
@@ -206,7 +219,7 @@ export const chatService = ChatService.getInstance()
 export const createChat = chatService.createChat.bind(chatService)
 export const getChat = chatService.getChat.bind(chatService)
 export const getAllChatsDesc = chatService.getAllChatsDesc.bind(chatService)
-// export const appendMessage = chatService.appendMessage.bind(chatService)
+export const appendMessage = chatService.appendMessage.bind(chatService)
 export const appendRecipes = chatService.appendRecipes.bind(chatService)
 export const appendCartItems = chatService.appendCartItems.bind(chatService)
 export const getAllBookmarkIds = chatService.getAllBookmarkIds.bind(chatService)

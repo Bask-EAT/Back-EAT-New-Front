@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea, ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { ShoppingCart, Check, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react"
+import { ShoppingCart, Check, ExternalLink, ChevronLeft, ChevronRight, Download } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Product, Recipe, Ingredient } from "../src/types"
 import Image from "next/image"
+import { ExtensionInstallGuide } from "./extension-install-guide"
 
 
 // interface IngredientWithProducts {
@@ -44,6 +45,60 @@ export function ShoppingListScreen({
 }: ShoppingListScreenProps) {
   const [cartItemGroups, setCartItemGroups] = useState<CartItemGroup[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isExtensionInstalled, setIsExtensionInstalled] = useState(false)
+  const [showInstallGuide, setShowInstallGuide] = useState(false)
+
+  // Chrome 확장프로그램 설치 여부를 확인하는 함수
+  const checkChromeExtension = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      // 1. 먼저 window.chrome.runtime이 존재하는지 확인
+      if (typeof window !== 'undefined' && (window as any).chrome && (window as any).chrome.runtime) {
+        console.log('✅ window.chrome.runtime이 존재합니다.')
+        resolve(true)
+        return
+      }
+
+      // 2. postMessage를 사용한 확장프로그램 존재 확인
+      console.log('🔍 postMessage로 확장프로그램 존재 확인 시도...')
+      
+      let timeoutId: NodeJS.Timeout
+      let messageListener: ((event: MessageEvent) => void) | null = null
+      
+      // 응답 대기
+      messageListener = (event) => {
+        if (event.data && event.data.type === 'EXTENSION_RESPONSE' && event.data.status === 'installed') {
+          console.log('✅ 확장프로그램 응답 수신: 설치됨')
+          if (timeoutId) clearTimeout(timeoutId)
+          if (messageListener) window.removeEventListener('message', messageListener)
+          resolve(true)
+        }
+      }
+      
+      // 타임아웃 설정 (3초)
+      timeoutId = setTimeout(() => {
+        console.log('⏰ 확장프로그램 응답 타임아웃')
+        if (messageListener) window.removeEventListener('message', messageListener)
+        resolve(false)
+      }, 3000)
+      
+      // 메시지 리스너 등록
+      window.addEventListener('message', messageListener)
+      
+      // 확장프로그램 존재 확인 메시지 전송
+      window.postMessage({ type: 'EXTENSION_CHECK' }, '*')
+    })
+  }
+
+  // 컴포넌트 마운트 시 확장프로그램 설치 여부 확인
+  useEffect(() => {
+    const checkExtension = async () => {
+      const installed = await checkChromeExtension()
+      setIsExtensionInstalled(installed)
+      console.log('🔍 초기 확장프로그램 설치 상태:', installed)
+    }
+    
+    checkExtension()
+  }, [])
 
   // cartItems prop이 변경될 때마다 최신 데이터로 cartItemGroups를 업데이트합니다.
   useEffect(() => {
@@ -87,7 +142,7 @@ export function ShoppingListScreen({
       console.log("🛒 최종 products:", products);
       
       return {
-        ingredientName: recipeItem.food_name || "이미지 검색 결과",
+        ingredientName: recipeItem.food_name || "상품 검색 결과",
         products: products,
         isActive: true, // 기본적으로 활성화 상태로 시작
         selectedProductId: undefined, // 처음엔 아무것도 선택되지 않음
@@ -163,8 +218,37 @@ const getSelectedProducts = () => {
   const handleGenerateCart = async () => {
     setIsGenerating(true)
     const selectedProducts = getSelectedProducts()
-
-    try {
+    
+    console.log('🛒 handleGenerateCart 실행됨')
+    console.log('🛒 선택된 상품들:', selectedProducts)
+    
+          try {
+        // 이미 확인된 확장프로그램 설치 상태 사용
+        console.log('🔍 확장프로그램 설치 상태:', isExtensionInstalled)
+      
+      if (isExtensionInstalled) {
+        console.log('✅ Chrome 확장프로그램이 설치되어 있습니다.')
+        
+        // 선택된 상품들의 URL 추출
+        const productUrls = selectedProducts.map(item => item.product.product_address)
+        console.log('🛒 추출된 상품 URL들:', productUrls)
+        
+        // Chrome 확장프로그램으로 메시지 전송
+        const message = {
+          type: 'SSG_ADD_TO_CART_REQUEST',
+          urls: productUrls
+        }
+        
+        console.log('📤 전송할 메시지:', message)
+        window.postMessage(message, '*')
+        
+        console.log('✅ Chrome 확장프로그램으로 상품 URL 전송 완료')
+      } else {
+        console.log('❌ Chrome 확장프로그램이 설치되지 않았습니다.')
+        console.log('🔍 window.chrome 상태:', typeof window !== 'undefined' ? (window as any).chrome : 'undefined')
+        console.log('🔍 chrome.runtime 상태:', typeof window !== 'undefined' && (window as any).chrome ? (window as any).chrome.runtime : 'undefined')
+      }
+      
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500))
       onGenerateCart(selectedProducts)
@@ -384,11 +468,16 @@ const getSelectedProducts = () => {
                   </div>
                 </div>
 
-                <Button onClick={handleGenerateCart} disabled={isGenerating} className="w-full" size="sm">
+                <Button onClick={handleGenerateCart} disabled={isGenerating || !isExtensionInstalled} className="w-full" size="sm">
                   {isGenerating ? (
                     <>
                       <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                       Generating...
+                    </>
+                  ) : !isExtensionInstalled ? (
+                    <>
+                      <Download className="w-3 h-3 mr-2" />
+                      확장프로그램 설치 필요
                     </>
                   ) : (
                     <>
@@ -397,6 +486,18 @@ const getSelectedProducts = () => {
                     </>
                   )}
                 </Button>
+                
+                {!isExtensionInstalled && (
+                  <Button 
+                    onClick={() => setShowInstallGuide(true)}
+                    variant="outline"
+                    className="w-full mt-2"
+                    size="sm"
+                  >
+                    <Download className="w-3 h-3 mr-2" />
+                    설치 가이드 보기
+                  </Button>
+                )}
               </div>
             </>
           ) : (
@@ -454,27 +555,52 @@ const getSelectedProducts = () => {
               </p>
               <p className="text-lg font-semibold">Total: {getTotalPrice().toLocaleString()}원</p>
             </div>
-            <Button
-              onClick={handleGenerateCart}
-              disabled={getSelectedProducts().length === 0 || isGenerating}
-              size="lg"
-              className="min-w-48"
-            >
-              {isGenerating ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  Generating Cart...
-                </>
-              ) : (
-                <>
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Generate Shopping Cart
-                </>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={handleGenerateCart}
+                disabled={getSelectedProducts().length === 0 || isGenerating || !isExtensionInstalled}
+                size="lg"
+                className="min-w-48"
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Generating Cart...
+                  </>
+                ) : !isExtensionInstalled ? (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    확장프로그램 설치 필요
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Generate Shopping Cart
+                  </>
+                )}
+              </Button>
+              
+              {!isExtensionInstalled && (
+                <Button 
+                  onClick={() => setShowInstallGuide(true)}
+                  variant="outline"
+                  size="sm"
+                  className="min-w-48"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Chrome 확장프로그램 설치 가이드
+                </Button>
               )}
-            </Button>
+            </div>
           </div>
         </div>
       </div>
+      
+      {/* 확장프로그램 설치 가이드 */}
+      <ExtensionInstallGuide 
+        isOpen={showInstallGuide} 
+        onClose={() => setShowInstallGuide(false)} 
+      />
     </div>
   )
 

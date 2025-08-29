@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Bookmark, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getUserBookmarks, removeBookmark, BookmarkResponse } from "@/lib/api"
+import { Recipe } from "@/src/types"
 
 interface Recipe {
   id: string
@@ -30,67 +31,37 @@ interface Recipe {
   updatedAt?: string
 }
 
-export function BookmarkList() {
-  const [bookmarks, setBookmarks] = useState<Recipe[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+// 💡 부모로부터 받은 북마크 데이터 타입 정의
+// (실제 프로젝트의 타입 정의에 맞게 수정하세요)
+interface BookmarkItem {
+  id: string;
+  recipeData: Recipe; // Recipe 타입은 프로젝트에 맞게 정의 필요
+  timestamp: number;
+  userId: string;
+}
+
+// 💡 Props 타입 정의: onRemoveBookmark 함수 추가
+interface BookmarkListProps {
+  bookmarkedRecipes: BookmarkItem[];
+  onRemoveBookmark: (recipe: Recipe) => void; // 북마크 제거를 처리할 함수
+  isLoading: boolean; // 로딩 상태도 prop으로 받음
+}
+
+
+export function BookmarkList({bookmarkedRecipes, onRemoveBookmark, isLoading} : BookmarkListProps) {
+  // const [bookmarks, setBookmarks] = useState<Recipe[]>([])
+  // const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadBookmarks()
-  }, [])
-
-  const loadBookmarks = async () => {
-    try {
-      setIsLoading(true)
-      const response: BookmarkResponse = await getUserBookmarks()
-      
-      if (response.success && response.data) {
-        setBookmarks(response.data)
-      } else {
-        toast({
-          title: "오류",
-          description: response.message || "북마크 목록을 불러올 수 없습니다.",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("북마크 목록 로드 실패:", error)
-      toast({
-        title: "오류",
-        description: "북마크 목록을 불러오는 중 오류가 발생했습니다.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
+  const handleRemoveClick = (recipe: Recipe) => {
+    // 부모로부터 받은 함수를 호출하여 상태 업데이트를 위임
+    onRemoveBookmark(recipe);
+    toast({
+        title: "북마크 제거",
+        description: `${recipe.name}이(가) 북마크에서 제거되었습니다.`,
+    });
   }
 
-  const handleRemoveBookmark = async (recipeId: string, recipeName: string) => {
-    try {
-      const response: BookmarkResponse = await removeBookmark(recipeId)
-      
-      if (response.success) {
-        setBookmarks(prev => prev.filter(recipe => recipe.id !== recipeId))
-        toast({
-          title: "북마크 제거",
-          description: `${recipeName}이(가) 북마크에서 제거되었습니다.`,
-        })
-      } else {
-        toast({
-          title: "오류",
-          description: response.message || "북마크 제거에 실패했습니다.",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("북마크 제거 실패:", error)
-      toast({
-        title: "오류",
-        description: "북마크 제거 중 오류가 발생했습니다.",
-        variant: "destructive",
-      })
-    }
-  }
 
   if (isLoading) {
     return (
@@ -103,7 +74,8 @@ export function BookmarkList() {
     )
   }
 
-  if (bookmarks.length === 0) {
+  // 💡 bookmarkedRecipes 배열을 직접 확인
+  if (!bookmarkedRecipes || bookmarkedRecipes.length === 0) {
     return (
       <div className="text-center p-8">
         <Bookmark className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -117,11 +89,11 @@ export function BookmarkList() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">내 북마크</h2>
-        <span className="text-sm text-gray-500">{bookmarks.length}개의 레시피</span>
+        <span className="text-sm text-gray-500">{bookmarkedRecipes.length}개의 레시피</span>
       </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {bookmarks.map((recipe) => (
+        {bookmarkedRecipes.map((recipe) => (
           <Card key={recipe.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">

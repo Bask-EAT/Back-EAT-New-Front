@@ -90,7 +90,22 @@ export interface BookmarkResponse {
 
 // 사용자의 모든 북마크 조회
 export async function getUserBookmarks(): Promise<BookmarkResponse> {
-    return getJson("/api/bookmarks");
+    // --- 디버깅 코드 시작 ---
+    console.log("✅ [DEBUG] getUserBookmarks: /api/bookmarks API 호출 시작");
+    try {
+        const response = await getJson<BookmarkResponse>("/api/bookmarks");
+        console.log("  - API 응답 수신:", response);
+        if (response.success) {
+            console.log(`  - 성공: 북마크 ${response.count}개 수신`);
+        } else {
+            console.warn("  - API 응답 오류:", response.message);
+        }
+        return response;
+    } catch (error) {
+        console.error("❌ [DEBUG] getUserBookmarks: API 호출 중 심각한 오류 발생", error);
+        throw error; // 에러를 다시 던져서 호출한 쪽에서 처리하도록 함
+    }
+    // --- 디버깅 코드 종료 ---
 }
 
 // 레시피 북마크 추가
@@ -157,32 +172,46 @@ export async function searchIngredient(chatId: string, ingredientName: string): 
     });
 }
 
-const INGREDIENT_SERVICE_URL = process.env.NEXT_PUBLIC_INGREDIENT_SERVICE_URL || "http://localhost:8004";
-
-/**
- * ingredient-service에 직접 텍스트 검색을 요청합니다.
- * @param query 검색할 재료명
- * @returns 검색 결과 Promise
- */
-export async function searchProductsByText(query: string): Promise<any> {
-    const res = await fetch(`${INGREDIENT_SERVICE_URL}/search/crossmodal-text`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query }),
-    });
-    console.log("-------searchProductsByText함수 실행 >> ",res)
-
-
-    if (!res.ok) {
-        const errorText = await res.text();
-        try {
-            const errorJson = JSON.parse(errorText);
-            throw new Error(errorJson.detail || errorText);
-        } catch (e) {
-            throw new Error(errorText);
-        }
-    }
-    return res.json();
+// 새로운 재료 검색 및 카트 추가 함수
+export interface SearchIngredientRequest {
+    query: string;
+    userId: string;
+    chatId: string;
 }
+
+export interface SearchIngredientResponse {
+    success: boolean;
+    data: any;
+    searchResults: any[];
+}
+
+export async function searchIngredientAndAddToCart(request: SearchIngredientRequest): Promise<SearchIngredientResponse> {
+    return postJson("/api/search-ingredient", request);
+}
+
+// 장바구니에 재료 추가 함수
+export interface AddToCartRequest {
+    chatId: string;
+    foodName: string;
+}
+
+export interface AddToCartResponse {
+    message: string;
+    cartMessageId: string;
+    products: Array<{
+        productName: string;
+        price: number;
+        imageUrl: string;
+        productAddress: string;
+    }>;
+}
+
+export async function addToCart(request: AddToCartRequest): Promise<AddToCartResponse> {
+    return postJson(`/api/chat/${request.chatId}/add-to-cart`, {
+        chatId: request.chatId,
+        foodName: request.foodName
+    });
+}
+
+
+
