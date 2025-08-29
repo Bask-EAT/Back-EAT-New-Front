@@ -157,5 +157,46 @@ export async function searchIngredient(chatId: string, ingredientName: string): 
     });
 }
 
+// 새로운 재료 검색 및 카트 추가 함수
+export interface SearchIngredientRequest {
+    query: string;
+    userId: string;
+    chatId: string;
+}
+
+export interface SearchIngredientResponse {
+    success: boolean;
+    data: any;
+    searchResults: any[];
+}
+
+export async function searchIngredientAndAddToCart(request: SearchIngredientRequest): Promise<SearchIngredientResponse> {
+    return postJson("/api/search-ingredient", request);
+}
+
+// 장바구니에 재료 추가 함수
+export interface AddToCartRequest {
+    chatId: string;
+    foodName: string;
+}
+
+export interface AddToCartResponse {
+    message: string;
+    cartMessageId: string;
+    products: Array<{
+        productName: string;
+        price: number;
+        imageUrl: string;
+        productAddress: string;
+    }>;
+}
+
+export async function addToCart(request: AddToCartRequest): Promise<AddToCartResponse> {
+    return postJson(`/api/chat/${request.chatId}/add-to-cart`, {
+        chatId: request.chatId,
+        foodName: request.foodName
+    });
+}
+
 
 

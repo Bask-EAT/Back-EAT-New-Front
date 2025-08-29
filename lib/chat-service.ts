@@ -20,9 +20,24 @@ export type DBRecipe = {
   instructions: string[]
   tags: string[]
   image?: string
+  food_name?: string // 상품 검색 결과의 카테고리명
+  product?: Array<{ 
+    product_name: string; 
+    price: number; 
+    image_url: string; 
+    product_address: string; 
+    food_name: string;
+  }> // 상품 목록
 }
 
-export type DBCartItem = { name: string; amount: string; unit: string }
+export type DBCartItem = { 
+  product_name: string; 
+  price: number; 
+  image_url: string; 
+  product_address: string; 
+  food_name: string; // 상품이 속한 카테고리명
+  quantity?: number;
+}
 
 export type ChatRecord = {
   id: string  // UUID 문자열로 변경

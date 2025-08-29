@@ -142,7 +142,7 @@ export function ShoppingListScreen({
       console.log("🛒 최종 products:", products);
       
       return {
-        ingredientName: recipeItem.food_name || "이미지 검색 결과",
+        ingredientName: recipeItem.food_name || "상품 검색 결과",
         products: products,
         isActive: true, // 기본적으로 활성화 상태로 시작
         selectedProductId: undefined, // 처음엔 아무것도 선택되지 않음
