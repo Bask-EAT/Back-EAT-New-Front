@@ -620,9 +620,9 @@ export function useChat() {
                     case "chat":
                         console.log("=== chat 타입 처리 ===");
                         console.log("chat 타입 -> 화면 변화 없음, 현재 뷰 유지:", currentView);
-                        console.log("chat 타입이므로 setCurrentView 호출하지 않음");
-                        console.log("chat 타입이므로 레시피나 카트 아이템 추가하지 않음");
-                        console.log("chat 타입이므로 백엔드에 저장하지 않음");
+                        // console.log("chat 타입이므로 setCurrentView 호출하지 않음");
+                        // console.log("chat 타입이므로 레시피나 카트 아이템 추가하지 않음");
+                        // console.log("chat 타입이므로 백엔드에 저장하지 않음");
                         // chat 타입일 때는 화면 변화가 없어야 함
                         // 현재 뷰를 그대로 유지 (setCurrentView 호출하지 않음)
                         // 레시피나 카트 아이템도 추가하지 않음

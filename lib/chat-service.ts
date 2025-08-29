@@ -71,7 +71,8 @@ export class ChatService {
       
       return {
         id: data.chat?.id || id, // UUID 문자열을 그대로 사용
-        title: data.chat?.title || "새로운 대화", // 채팅방 제목
+        // title: data.chat?.title || "새로운 대화", // 채팅방 제목
+        title: data.chat?.title, // 채팅방 제목
         timestamp: new Date(data.chat?.updatedAt).getTime() || Date.now(),
         messages: (data.messages || []).map((msg: any) => ({
           role: msg.role,
@@ -97,7 +98,8 @@ export class ChatService {
       // ConversationSummary를 ChatRecord로 변환
       return chats.map((chat: any) => ({
         id: chat.id, // UUID 문자열을 그대로 사용
-        title: chat.title || "새로운 대화", // 채팅방 제목
+        // title: chat.title || "새로운 대화", // 채팅방 제목
+        title: chat.title, // 채팅방 제목
         timestamp: new Date(chat.updatedAt).getTime(), // updatedAt을 timestamp로 변환
         messages: [] // 메시지는 필요할 때 별도로 로드
       }))

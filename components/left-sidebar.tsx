@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
 import type { ChatSession } from "../src/types"
 import { getFirebaseAuth } from "@/lib/firebase"
+import Link from "next/link"
 
 // 기존 로컬 인터페이스 제거: 전역 타입과 충돌하므로 src/types.ts 의 ChatSession 사용
 
@@ -69,7 +70,9 @@ export function LeftSidebar({
           {!collapsed && (
             <div className="flex items-center gap-2">
               <ChefHat className="w-6 h-6 text-blue-600" />
-              <span className="font-bold text-lg text-foreground">Recipe AI</span>
+              <Link href="/">
+                <span className="font-bold text-lg text-foreground">Recipe AI</span>
+              </Link>
             </div>
           )}
           <Button variant="ghost" size="sm" onClick={onToggle} className="p-2">
