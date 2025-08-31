@@ -15,6 +15,9 @@ import {
 } from "@/lib/chat-service"
 import {updateChatTitle, extractNumberedSuggestions, mapSelectionToDish, isNumericSelection} from "@/src/chat"
 import {postJson, postMultipart, getJson, searchIngredient} from "@/lib/api"
+import { getUserBookmarks } from "@/lib/bookmark-service"
+import type { Bookmark } from "@/lib/bookmark-service"
+import { useToast } from "./use-toast"
 
 // 메시지 정렬 함수 - 사용자 메시지가 AI 메시지보다 먼저 오도록 보장
 const sortMessages = (messages: UIChatMessage[]): UIChatMessage[] => {
@@ -46,7 +49,7 @@ type ChatServiceResponse = {
 export function useChat() {
     const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart" | "bookmark">("welcome")
     const [chatHistory, setChatHistory] = useState<UIChatSession[]>([])
-    const [bookmarkedRecipes, setBookmarkedRecipes] = useState<string[]>([])
+    const [bookmarkedRecipes, setBookmarkedRecipes] = useState<Bookmark[]>([])
     // UUID 기반 채팅방 ID로 변경
     const [currentChatId, setCurrentChatId] = useState<string | null>(null)
     // 서버 전송용 해시 기반 Chat ID (UI/백엔드와 분리)
@@ -61,6 +64,9 @@ export function useChat() {
     const [cartItems, setCartItems] = useState<any[]>([])
     const [error, setError] = useState<string | null>(null)
     const [lastSuggestions, setLastSuggestions] = useState<string[]>([])
+    const [isBookmarkView, setIsBookmarkView] = useState(false)
+    const [bookmarks, setBookmarks] = useState<string[]>([])
+    const { toast } = useToast();
 
 
     // 초기 로드: 백엔드에서 최근 채팅 목록 로드
@@ -827,9 +833,31 @@ export function useChat() {
 
 
     // 뷰 변경 핸들러
-    const handleViewChange = (view: "welcome" | "recipe" | "cart" | "bookmark") => {
+    const handleViewChange = async (view: string) => {
         setCurrentView(view)
-        setError(null)
+
+        if (view === "bookmark") {
+            setIsLoading(true);
+            console.log("🚀 [페이지] 북마크 목록 조회를 시작합니다.");
+
+            const response = await getUserBookmarks();
+
+            if (response.success && response.data) {
+                setBookmarks(response.data);
+                console.log(
+                    `✅ [페이지] 북마크 ${response.data.length}개 로딩 완료`
+                );
+            } else {
+                console.error("🚨 [페이지] 북마크 로딩 실패:", response.message);
+                toast({
+                    variant: "destructive",
+                    title: "오류",
+                    description: "북마크를 불러오는데 실패했습니다.",
+                });
+                setIsBookmarkView(false);
+            }
+            setIsLoading(false);
+        }
     }
 
     return {
