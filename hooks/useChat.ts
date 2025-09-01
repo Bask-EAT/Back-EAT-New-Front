@@ -747,10 +747,17 @@ export function useChat() {
         // 현재 화면의 레시피 중 대상 찾기
         const recipe = currentRecipes.find((r) => r.id === recipeId)
         if (!recipe) return
-            ;
+            
         (async () => {
             try {
-                const toggled = await toggleBookmark(recipe as unknown as DBRecipe)
+                const isCurrentlyBookmarked = bookmarkedRecipes.includes(recipeId);
+                
+                const toggled = await toggleBookmark(
+                    recipe as unknown as DBRecipe,
+                    isCurrentlyBookmarked
+                );
+
+                // 3. 이후 상태 업데이트 로직은 이전과 동일합니다.
                 setBookmarkedRecipes((prev) =>
                     toggled ? [...new Set([...prev, recipeId])] : prev.filter((id) => id !== recipeId),
                 )

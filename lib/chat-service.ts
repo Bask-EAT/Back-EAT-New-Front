@@ -116,7 +116,11 @@ export class ChatService {
         timestamp: new Date(chat.updatedAt).getTime(), // updatedAt을 timestamp로 변환
         messages: [] // 메시지는 필요할 때 별도로 로드
       }))
-    } catch (error) {
+    } catch (error: any) {
+      // 채팅 없으면 그냥 빈 배열 반환
+      if (error.message?.includes("INTERNAL_SERVER_ERROR")) {
+        return [];
+      }
       console.error("채팅 목록 조회 실패:", error)
       return []
     }
@@ -161,7 +165,12 @@ export class ChatService {
     try {
       const response = await getJson<any>(`/api/bookmarks`)
       return response.data || []
-    } catch (error) {
+    } catch (error: any) {
+      // 500 에러면서 비어있는 경우는 그냥 [] 리턴, 로그는 안 찍음
+      if (error.message?.includes("INTERNAL_SERVER_ERROR")) {
+        return [];
+      }
+
       console.error("북마크 목록 조회 실패:", error)
       return []
     }
@@ -185,20 +194,10 @@ export class ChatService {
     }
   }
 
-  async isBookmarked(id: string): Promise<boolean> {
-    try {
-      const response = await getJson<any>(`/api/bookmarks/${id}/check`)
-      return response.data || false
-    } catch (error) {
-      console.error("북마크 확인 실패:", error)
-      return false
-    }
-  }
 
-  async toggleBookmark(recipe: DBRecipe): Promise<boolean> {
+  async toggleBookmark(recipe: DBRecipe, isCurrentlyBookmarked: boolean): Promise<boolean> {
     try {
-      const isBookmarked = await this.isBookmarked(recipe.id)
-      if (isBookmarked) {
+      if (isCurrentlyBookmarked) {
         await this.removeBookmark(recipe.id)
         return false
       } else {
@@ -225,5 +224,4 @@ export const appendCartItems = chatService.appendCartItems.bind(chatService)
 export const getAllBookmarkIds = chatService.getAllBookmarkIds.bind(chatService)
 export const addBookmark = chatService.addBookmark.bind(chatService)
 export const removeBookmark = chatService.removeBookmark.bind(chatService)
-export const isBookmarked = chatService.isBookmarked.bind(chatService)
 export const toggleBookmark = chatService.toggleBookmark.bind(chatService)
