@@ -68,7 +68,7 @@ export function BookmarkList({
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 p-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900 text-foreground">내 북마크</h2>
                 <span className="text-sm text-gray-500">
@@ -76,7 +76,7 @@ export function BookmarkList({
                 </span>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mx-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {bookmarkedRecipes.map((bookmark) => {
                     const recipe = bookmark.recipeData;
                     return (

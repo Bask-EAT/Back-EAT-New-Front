@@ -489,6 +489,7 @@ export function ExtensionInstallGuide({ isOpen, onClose }: ExtensionInstallGuide
             <Button 
               variant="outline" 
               onClick={onClose}
+              className="flex-1 max-w-xs"
             >
               나중에 하기
             </Button>
@@ -497,6 +498,7 @@ export function ExtensionInstallGuide({ isOpen, onClose }: ExtensionInstallGuide
               <Button 
                 variant="outline"
                 onClick={() => setCurrentStep(currentStep - 1)}
+                className="flex-1 max-w-xs"
               >
                 이전 단계
               </Button>

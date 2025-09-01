@@ -71,7 +71,7 @@ export function LeftSidebar({
             <div className="flex items-center gap-2">
               <ChefHat className="w-6 h-6 text-blue-600" />
               <Link href="/">
-                <span className="font-bold text-lg text-foreground">Recipe AI</span>
+                <span className="font-bold text-lg text-foreground">Bask:EAT</span>
               </Link>
             </div>
           )}
@@ -84,7 +84,7 @@ export function LeftSidebar({
         <div className="p-4">
           <Button onClick={onNewChat} className="w-full justify-start gap-2 bg-transparent" variant="outline">
             <MessageSquarePlus className="w-4 h-4" />
-            {!collapsed && "New Chat"}
+            {!collapsed && "새로운 대화 생성"}
           </Button>
         </div>
 
@@ -92,10 +92,10 @@ export function LeftSidebar({
         <div className="flex-1 px-4">
           {!collapsed && (
             <div className="mb-4">
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">Chat History</h3>
-              <ScrollArea className="h-48">
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">채팅 기록</h3>
+              <ScrollArea className="h-150">
                 {chatHistory.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">No chats yet</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">채팅을 시작해보세요!</p>
                 ) : (
                   chatHistory.map((chat) => (
                     <Button
@@ -110,30 +110,6 @@ export function LeftSidebar({
                         <div className="truncate text-sm">{chat.title}</div>
                         <div className="text-xs text-muted-foreground">{formatDate(chat.lastUpdated)}</div>
                       </div>
-                    </Button>
-                  ))
-                )}
-              </ScrollArea>
-            </div>
-          )}
-
-          {/* Bookmarks */}
-          {!collapsed && (
-            <div className="mb-4">
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">Recipe Bookmarks</h3>
-              <ScrollArea className="h-32">
-                {bookmarks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No bookmarks yet</p>
-                ) : (
-                  bookmarks.map((bookmark, index) => (
-                    <Button
-                      key={index}
-                      variant="ghost"
-                      className="w-full justify-start mb-1 text-left truncate"
-                      size="sm"
-                    >
-                      <Bookmark className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span className="truncate">{bookmark}</span>
                     </Button>
                   ))
                 )}

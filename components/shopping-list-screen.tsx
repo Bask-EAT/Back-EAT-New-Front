@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea, ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from "@/components/ui/scroll-area"
@@ -47,6 +47,9 @@ export function ShoppingListScreen({
   const [isGenerating, setIsGenerating] = useState(false)
   const [isExtensionInstalled, setIsExtensionInstalled] = useState(false)
   const [showInstallGuide, setShowInstallGuide] = useState(false)
+  
+  // 스크롤 위치를 전역적으로 관리하는 Map
+  const scrollPositionsRef = useRef<Map<number, number>>(new Map())
 
   // Chrome 확장프로그램 설치 여부를 확인하는 함수
   const checkChromeExtension = (): Promise<boolean> => {
@@ -171,7 +174,13 @@ export function ShoppingListScreen({
   }
 
   // 선택된 상품을 토글합니다. 이미 선택된 상품을 다시 클릭하면 선택 해제됩니다.
- const selectProduct = (groupIndex: number, productId: string) => {
+  const selectProduct = useCallback((groupIndex: number, productId: string) => {
+    // 현재 스크롤 위치를 전역 Map에 저장
+    const scrollContainer = document.querySelector(`[data-scroll-container="group-${groupIndex}"]`);
+    if (scrollContainer) {
+      scrollPositionsRef.current.set(groupIndex, scrollContainer.scrollLeft);
+    }
+
     setCartItemGroups((prev) =>
       prev.map((group, i) =>{
         // 현재 그룹이 아니면 그대로 반환
@@ -192,7 +201,18 @@ export function ShoppingListScreen({
         }}
       ),
     )
-  }
+
+    // requestAnimationFrame을 사용하여 DOM 업데이트 후 스크롤 위치 복원
+    requestAnimationFrame(() => {
+      const updatedScrollContainer = document.querySelector(`[data-scroll-container="group-${groupIndex}"]`);
+      if (updatedScrollContainer) {
+        const savedScrollLeft = scrollPositionsRef.current.get(groupIndex);
+        if (savedScrollLeft !== undefined) {
+          updatedScrollContainer.scrollLeft = savedScrollLeft;
+        }
+      }
+    });
+  }, [])
 
   // 선택된 상품을 가져옵니다. 각 그룹에서 활성화된 상품만 필터링합니다.
 const getSelectedProducts = () => {
@@ -277,25 +297,28 @@ const getSelectedProducts = () => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [isScrolled, setIsScrolled] = useState({ left: false, right: true });
 
-    const handleScroll = () => {
+    const handleScroll = useCallback(() => {
       const container = scrollContainerRef.current;
       if (container) {
+        // 스크롤 위치를 전역 Map에 저장
+        scrollPositionsRef.current.set(groupIndex, container.scrollLeft);
+        
         const atLeft = container.scrollLeft === 0;
-        const atRight = container.scrollLeft + container.clientWidth >= container.scrollWidth - 1; // -1 to handle precision
+        const atRight = container.scrollLeft + container.clientWidth >= container.scrollWidth - 1;
         setIsScrolled({ left: !atLeft, right: !atRight });
       }
-    };
+    }, [groupIndex]);
 
-    const scroll = (direction: 'left' | 'right') => {
+    const scroll = useCallback((direction: 'left' | 'right') => {
       const container = scrollContainerRef.current;
       if (container) {
-        const scrollAmount = container.clientWidth * 0.8; // 한 번에 화면 너비의 80%씩 스크롤
+        const scrollAmount = container.clientWidth * 0.8;
         container.scrollBy({
           left: direction === 'left' ? -scrollAmount : scrollAmount,
           behavior: 'smooth',
         });
       }
-    };
+    }, []);
     
     useEffect(() => {
       const container = scrollContainerRef.current;
@@ -313,7 +336,18 @@ const getSelectedProducts = () => {
           container.removeEventListener('scroll', handleScroll);
         }
       };
-    }, [group.products]);
+    }, [groupIndex, handleScroll]); // groupIndex와 handleScroll 의존성 추가
+
+    // useLayoutEffect를 사용하여 DOM 업데이트 직후 스크롤 위치 복원
+    useLayoutEffect(() => {
+      const container = scrollContainerRef.current;
+      if (container) {
+        const savedScrollLeft = scrollPositionsRef.current.get(groupIndex);
+        if (savedScrollLeft !== undefined) {
+          container.scrollLeft = savedScrollLeft;
+        }
+      }
+    }, [groupIndex]);
 
 
     return (
@@ -363,7 +397,11 @@ const getSelectedProducts = () => {
                     )}
 
                     <ScrollAreaRoot className="w-full">
-                      <ScrollAreaViewport className="w-full" ref={scrollContainerRef}>
+                      <ScrollAreaViewport 
+                        className="w-full" 
+                        ref={scrollContainerRef}
+                        data-scroll-container={`group-${groupIndex}`}
+                      >
                         <div className="flex flex-row gap-4 pb-4">
                         {group.products?.map((product) => {
 
@@ -428,39 +466,54 @@ const getSelectedProducts = () => {
       {/* Cart Summary Card - Fixed position top right */}
       <Card
         className={cn(
-          "fixed top-4 z-30 w-80 shadow-lg transition-all duration-300",
+          "fixed top-4 z-20 w-80 shadow-lg transition-all duration-300 bg-white dark:bg-gray-800",
           isRightSidebarOpen ? "right-124" : "right-16",
         )}
       >
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <ShoppingCart className="w-5 h-5" />
-            Cart Summary ({getSelectedProducts().length})
+            장바구니 ({getSelectedProducts().length})
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="max-h-[500px] flex flex-col">
           {getSelectedProducts().length > 0 ? (
             <>
-              <ScrollArea className="max-h-64 mb-4">
-                <div className="space-y-2">
+              {/* Scrollable product list with fixed height */}
+              <ScrollArea className="h-100 mb-4">
+                <div className="space-y-2 pr-2">
                   {getSelectedProducts().map((item, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                      className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2"
                     >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.product.product_name}</p>
-                        <p className="text-xs text-gray-500">{item.ingredient}</p>
+                      {/* 카테고리 */}
+                      <div className="flex items-center">
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-full">
+                          {item.ingredient}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1 ml-2">
-                        <span className="text-sm font-semibold text-green-600">{item.product.price.toLocaleString()} 원</span>
+                      
+                      {/* 상품명 */}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-tight">
+                          {item.product.product_name}
+                        </p>
+                      </div>
+                      
+                      {/* 가격 */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                          {item.product.price.toLocaleString()} 원
+                        </span>
                       </div>
                     </div>
                   ))}
                 </div>
               </ScrollArea>
 
-              <div className="border-t pt-3 space-y-3">
+              {/* Fixed total and button section - always visible */}
+              <div className="border-t pt-3 space-y-3 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">Total:</span>
                   <div className="flex items-center gap-1">
@@ -503,8 +556,8 @@ const getSelectedProducts = () => {
           ) : (
             <div className="text-center py-8">
               <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-              <p className="text-sm text-gray-500 mb-2">No products selected</p>
-              <p className="text-xs text-gray-400">Select products from ingredients below</p>
+              <p className="text-sm text-gray-500 mb-2">선택된 상품이 없습니다</p>
+              <p className="text-xs text-gray-400">재료에서 상품을 선택해주세요</p>
             </div>
           )}
         </CardContent>
@@ -517,17 +570,13 @@ const getSelectedProducts = () => {
           isRightSidebarOpen ? "pr-96" : "pr-84",
         )}
       >
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto pr-96">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Shopping List</h1>
+              <h1 className="text-3xl font-bold mb-2">재료 목록</h1>
               <p className="text-gray-600 dark:text-gray-400">
-                Select products for your ingredients. Click ingredient names to toggle them on/off.
+                재료에 대한 상품을 선택하세요. 재료 이름을 클릭하여 켜고 끌 수 있습니다.
               </p>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-green-600">{getTotalPrice()} 원</div>
-              <div className="text-sm text-gray-500">{getSelectedProducts().length} items selected</div>
             </div>
           </div>
         </div>
@@ -535,63 +584,15 @@ const getSelectedProducts = () => {
 
       {/* Shopping List Content */}
       <div className={cn("flex-1 overflow-auto transition-all duration-300", isRightSidebarOpen ? "pr-96" : "pr-84")}>
-        <div className="max-w-6xl mx-auto p-6">
+        <div className="max-w-6xl mx-auto p-6 pr-96">
           <div className="space-y-8">
             {cartItemGroups.map((group, groupIndex) => (
-              <IngredientGroup key={groupIndex} group={group} groupIndex={groupIndex} />
+              <IngredientGroup 
+                key={`${group.ingredientName}-${groupIndex}`} 
+                group={group} 
+                groupIndex={groupIndex} 
+              />
             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Footer with Generate Cart Button */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {getSelectedProducts().length} of {cartItemGroups.filter((i) => i.isActive).length} active
-                ingredients selected
-              </p>
-              <p className="text-lg font-semibold">Total: {getTotalPrice().toLocaleString()}원</p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Button
-                onClick={handleGenerateCart}
-                disabled={getSelectedProducts().length === 0 || isGenerating || !isExtensionInstalled}
-                size="lg"
-                className="min-w-48"
-              >
-                {isGenerating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                    Generating Cart...
-                  </>
-                ) : !isExtensionInstalled ? (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    확장프로그램 설치 필요
-                  </>
-                ) : (
-                  <>
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Generate Shopping Cart
-                  </>
-                )}
-              </Button>
-              
-              {!isExtensionInstalled && (
-                <Button 
-                  onClick={() => setShowInstallGuide(true)}
-                  variant="outline"
-                  size="sm"
-                  className="min-w-48"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Chrome 확장프로그램 설치 가이드
-                </Button>
-              )}
-            </div>
           </div>
         </div>
       </div>

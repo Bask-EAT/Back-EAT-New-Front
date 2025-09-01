@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { ChefHat, Bookmark, BookmarkCheck, ShoppingCart, Plus } from "lucide-react"
+import { ChefHat, Bookmark, BookmarkCheck, ShoppingCart, Plus, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { UIRecipe } from "../src/types"
+import type { UIRecipe, Recipe } from "../src/types"
 import { backendFetch, searchIngredientAndAddToCart, addToCart } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
 
@@ -26,6 +26,7 @@ interface RecipeExplorationScreenProps {
   onAddToCart: (ingredient: { name: string; amount: string; unit: string }) => void
   isRightSidebarOpen?: boolean
   currentChatId?: string | null
+  cartItems?: Recipe[] // 장바구니 아이템 추가
 }
 
 export function RecipeExplorationScreen({
@@ -35,11 +36,27 @@ export function RecipeExplorationScreen({
   onAddToCart,
   isRightSidebarOpen = false,
   currentChatId,
+  cartItems = [], // 기본값 설정
 }: RecipeExplorationScreenProps) {
   const [selectedRecipeIndex, setSelectedRecipeIndex] = useState<number>(0)
   const [recipesWithDetails, setRecipesWithDetails] = useState<UIRecipe[]>(recipes)
 
   const selectedRecipe = recipesWithDetails[selectedRecipeIndex]
+
+  // 재료가 장바구니에 이미 있는지 확인하는 함수
+  const isIngredientInCart = (ingredientName: string): boolean => {
+    return cartItems.some(recipe => {
+      // TextRecipe 타입인 경우 ingredients 배열 확인
+      if ('ingredients' in recipe && recipe.ingredients) {
+        return recipe.ingredients.some(ing => ing.item === ingredientName)
+      }
+      // CartRecipe 타입인 경우 food_name 확인
+      if ('food_name' in recipe) {
+        return recipe.food_name === ingredientName
+      }
+      return false
+    })
+  }
 
   // 레시피 상세 정보 로드
   const loadRecipeDetails = async (recipe: UIRecipe) => {
@@ -195,48 +212,64 @@ export function RecipeExplorationScreen({
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {selectedRecipe.ingredients.map((ingredient, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                        >
-                          <div className="flex-1">
-                            <span className="font-medium">
-                              {ingredient.name}
-                              {(ingredient.amount || ingredient.unit) && (
-                                <span className="text-sm text-gray-500 ml-2">
-                                  {ingredient.amount} {ingredient.unit}
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              if (currentChatId) {
-                                try {
-                                  const response = await addToCart({
-                                    chatId: currentChatId,
-                                    foodName: ingredient.name
-                                  });
-                                  console.log('장바구니 추가 성공:', response);
-                                  // 성공 메시지 표시 또는 다른 UI 업데이트
-                                } catch (error) {
-                                  console.error('장바구니 추가 실패:', error);
-                                  // 에러 메시지 표시
-                                }
-                              } else {
-                                console.error('현재 채팅 ID가 없습니다.');
-                              }
-                            }}
-                            className="ml-2"
+                      {selectedRecipe.ingredients.map((ingredient, index) => {
+                        const isInCart = isIngredientInCart(ingredient.name)
+                        
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                           >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Add
-                          </Button>
-                        </div>
-                      ))}
+                            <div className="flex-1">
+                              <span className="font-medium">
+                                {ingredient.name}
+                                {(ingredient.amount || ingredient.unit) && (
+                                  <span className="text-sm text-gray-500 ml-2">
+                                    {ingredient.amount} {ingredient.unit}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            {isInCart ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled
+                                className="ml-2 bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400"
+                              >
+                                <Check className="w-4 h-4 mr-1" />
+                                Added
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                  if (currentChatId) {
+                                    try {
+                                      const response = await addToCart({
+                                        chatId: currentChatId,
+                                        foodName: ingredient.name
+                                      });
+                                      console.log('장바구니 추가 성공:', response);
+                                      // 성공 메시지 표시 또는 다른 UI 업데이트
+                                    } catch (error) {
+                                      console.error('장바구니 추가 실패:', error);
+                                      // 에러 메시지 표시
+                                    }
+                                  } else {
+                                    console.error('현재 채팅 ID가 없습니다.');
+                                  }
+                                }}
+                                className="ml-2"
+                              >
+                                <Plus className="w-4 h-4 mr-1" />
+                                Add
+                              </Button>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -265,8 +298,8 @@ export function RecipeExplorationScreen({
           <div className="flex items-center justify-center h-full">
             <div className="text-center text-gray-500">
               <ChefHat className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p className="text-xl">No recipes available</p>
-              <p>Start a conversation to get recipe suggestions!</p>
+              <p className="text-xl">레시피가 없습니다.</p>
+              <p>대화를 통해 레시피를 생성해 보세요</p>
             </div>
           </div>
         )}

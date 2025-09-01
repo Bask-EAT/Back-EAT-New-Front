@@ -266,7 +266,7 @@ export function RightChatSidebar({
               <Input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Ask for recipes or ingredients..."
+                placeholder="요리나 재료에 대해 물어보세요..."
                 className="flex-1"
                 disabled={isLoading}
               />

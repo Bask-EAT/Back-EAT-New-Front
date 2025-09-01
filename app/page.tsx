@@ -86,6 +86,7 @@ export default function HomePage() {
               onAddToCart={(ing) => handleAddToCart({ item: ing.name, amount: ing.amount, unit: ing.unit })}
               isRightSidebarOpen={!rightSidebarCollapsed}
               currentChatId={currentChatId}
+              cartItems={cartItems}
             />
           )}
           {currentView === "cart" && (
