@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { ChefHat, Bookmark, BookmarkCheck, ShoppingCart, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { UIRecipe } from "../src/types"
-import { backendFetch } from "@/lib/api"
+import { backendFetch, searchIngredientAndAddToCart, addToCart } from "@/lib/api"
+import { useAuth } from "@/hooks/useAuth"
 
 
 interface IngredientItem {
@@ -212,7 +213,23 @@ export function RecipeExplorationScreen({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => onAddToCart({ name: ingredient.name, amount: ingredient.amount, unit: ingredient.unit })}
+                            onClick={async () => {
+                              if (currentChatId) {
+                                try {
+                                  const response = await addToCart({
+                                    chatId: currentChatId,
+                                    foodName: ingredient.name
+                                  });
+                                  console.log('장바구니 추가 성공:', response);
+                                  // 성공 메시지 표시 또는 다른 UI 업데이트
+                                } catch (error) {
+                                  console.error('장바구니 추가 실패:', error);
+                                  // 에러 메시지 표시
+                                }
+                              } else {
+                                console.error('현재 채팅 ID가 없습니다.');
+                              }
+                            }}
                             className="ml-2"
                           >
                             <Plus className="w-4 h-4 mr-1" />

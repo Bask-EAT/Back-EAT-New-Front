@@ -23,10 +23,9 @@ export function WelcomeScreen({ onChatSubmit }: WelcomeScreenProps) {
   }
 
   const suggestions = [
-    "I want to cook something healthy with chicken",
-    "Show me easy vegetarian recipes",
-    "What can I make with pasta and tomatoes?",
-    "I need a quick breakfast recipe",
+    "가지로 할 수 있는 프랑스 요리 추천해줘",
+    "양파 담아줘",
+    "된장찌개 레시피 알려줘",
   ]
 
   return (
@@ -35,9 +34,9 @@ export function WelcomeScreen({ onChatSubmit }: WelcomeScreenProps) {
         <div className="flex items-center justify-center mb-6">
           <ChefHat className="w-16 h-16 text-blue-600" />
         </div>
-        <h1 className="text-4xl font-bold mb-4">What do you want to cook today?</h1>
+        <h1 className="text-4xl font-bold mb-4">오늘은 어떤 요리를 도와드릴까요?</h1>
         <p className="text-lg text-gray-600 dark:text-gray-400">
-          Get instant recipe ideas, cooking instructions, and even a shopping list.
+          도전하고 싶은 요리나 필요한 재료를 알려주세요.
         </p>
       </div>
 
@@ -46,7 +45,7 @@ export function WelcomeScreen({ onChatSubmit }: WelcomeScreenProps) {
           <Input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="e.g., 'a quick and healthy dinner with chicken'"
+            placeholder="요리에 관한 질문이나 요청을 적어주세요"
             className="pr-12 py-6 text-lg"
           />
           <Button type="submit" size="sm" className="absolute right-2 top-1/2 transform -translate-y-1/2">

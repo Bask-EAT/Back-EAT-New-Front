@@ -67,51 +67,6 @@ export async function getChatLists(chatId: string): Promise<{
     return getJson(`/api/chat/${chatId}/lists`);
 }
 
-// 북마크 관련 API 함수들
-export interface BookmarkRequest {
-    recipeId: string;
-    recipeName: string;
-    recipeDescription?: string;
-    ingredients?: string[];
-    cookingMethods?: string[];
-    cookingTime?: string;
-    servings?: string;
-    difficulty?: string;
-    category?: string;
-}
-
-export interface BookmarkResponse {
-    success: boolean;
-    message: string;
-    data?: any[];
-    count?: number;
-    isBookmarked?: boolean;
-}
-
-// 사용자의 모든 북마크 조회
-export async function getUserBookmarks(): Promise<BookmarkResponse> {
-    return getJson("/api/bookmarks");
-}
-
-// 레시피 북마크 추가
-export async function addBookmark(recipe: BookmarkRequest): Promise<BookmarkResponse> {
-    return postJson("/api/bookmarks", recipe);
-}
-
-// 레시피 북마크 제거
-export async function removeBookmark(recipeId: string): Promise<BookmarkResponse> {
-    return deleteJson(`/api/bookmarks/${recipeId}`);
-}
-
-// 레시피 북마크 여부 확인
-export async function checkBookmark(recipeId: string): Promise<BookmarkResponse> {
-    return getJson(`/api/bookmarks/${recipeId}/check`);
-}
-
-// 레시피 북마크 토글 (추가/제거)
-export async function toggleBookmark(recipeId: string, recipe: BookmarkRequest): Promise<BookmarkResponse> {
-    return postJson(`/api/bookmarks/${recipeId}/toggle`, recipe);
-}
 
 async function safeText(res: Response): Promise<string> {
     try {
@@ -157,32 +112,46 @@ export async function searchIngredient(chatId: string, ingredientName: string): 
     });
 }
 
-const INGREDIENT_SERVICE_URL = process.env.NEXT_PUBLIC_INGREDIENT_SERVICE_URL || "http://localhost:8004";
-
-/**
- * ingredient-service에 직접 텍스트 검색을 요청합니다.
- * @param query 검색할 재료명
- * @returns 검색 결과 Promise
- */
-export async function searchProductsByText(query: string): Promise<any> {
-    const res = await fetch(`${INGREDIENT_SERVICE_URL}/search/crossmodal-text`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query }),
-    });
-    console.log("-------searchProductsByText함수 실행 >> ",res)
-
-
-    if (!res.ok) {
-        const errorText = await res.text();
-        try {
-            const errorJson = JSON.parse(errorText);
-            throw new Error(errorJson.detail || errorText);
-        } catch (e) {
-            throw new Error(errorText);
-        }
-    }
-    return res.json();
+// 새로운 재료 검색 및 카트 추가 함수
+export interface SearchIngredientRequest {
+    query: string;
+    userId: string;
+    chatId: string;
 }
+
+export interface SearchIngredientResponse {
+    success: boolean;
+    data: any;
+    searchResults: any[];
+}
+
+export async function searchIngredientAndAddToCart(request: SearchIngredientRequest): Promise<SearchIngredientResponse> {
+    return postJson("/api/search-ingredient", request);
+}
+
+// 장바구니에 재료 추가 함수
+export interface AddToCartRequest {
+    chatId: string;
+    foodName: string;
+}
+
+export interface AddToCartResponse {
+    message: string;
+    cartMessageId: string;
+    products: Array<{
+        productName: string;
+        price: number;
+        imageUrl: string;
+        productAddress: string;
+    }>;
+}
+
+export async function addToCart(request: AddToCartRequest): Promise<AddToCartResponse> {
+    return postJson(`/api/chat/${request.chatId}/add-to-cart`, {
+        chatId: request.chatId,
+        foodName: request.foodName
+    });
+}
+
+
+

@@ -16,22 +16,7 @@ interface ServiceHealth { intent: boolean; shopping: boolean; video: boolean; ag
 type ChatServiceResponse = { chatType: "chat" | "cart"; content: string; recipes: Recipe[] }
 
 export default function HomePage() {
-  // const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart">("welcome")
-  // const [chatHistory, setChatHistory] = useLocalStorage<ChatSession[]>("recipe-ai-chat-history", [])
-  // 북마크는 이제 food_name과 같은 고유한 문자열을 저장해야 합니다.
-  // const [bookmarkedRecipes, setBookmarkedRecipes] = useLocalStorage<string[]>("recipe-ai-bookmarks", [])
-  // const [currentChatId, setCurrentChatId] = useState<string | null>(null)
-  // const [currentMessages, setCurrentMessages] = useState<ChatMessage[]>([])
-  // const [isLoading, setIsLoading] = useState(false)
-  // const [currentRecipes, setCurrentRecipes] = useState<Recipe[]>([])
-  const [currentIngredients, setCurrentIngredients] = useState<Array<{ name: string; amount: string; unit: string }>>(
-    [],
-  )
-  const [currentCartData, setCurrentCartData] = useState<Recipe[]>([])
-  // const [cartItems, setCartItems] = useState<Array<{ name: string; amount: string; unit: string }>>([])
-  // const [error, setError] = useState<string | null>(null)
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
-  const [lastSuggestions, setLastSuggestions] = useState<string[]>([])
   const {
     currentView,
     chatHistory,
@@ -113,6 +98,7 @@ export default function HomePage() {
           {currentView === "bookmark" && (
             <BookmarkList
               isRightSidebarOpen={!rightSidebarCollapsed}
+              bookmarkedRecipes={bookmarkedRecipes}
             />
           )}
         </div>

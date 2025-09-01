@@ -9,6 +9,7 @@ export interface Product {
   price: number
   image_url: string
   product_address: string
+  food_name?: string // 상품이 속한 카테고리명 (예: "두부")
 }
 
 export interface TextRecipe {
@@ -16,6 +17,7 @@ export interface TextRecipe {
   food_name: string
   ingredients: Ingredient[] // 레시피 재료
   recipe: string[] // 조리 방법
+  product?: never // TextRecipe에는 product 속성이 없음
 }
 
 export interface CartRecipe {
@@ -23,6 +25,7 @@ export interface CartRecipe {
   food_name: string
   product: Product[] | null // null일 수 있도록 수정
   recipe: [] // 항상 빈 배열
+  ingredients?: never // CartRecipe에는 ingredients 속성이 없음
 }
 
 export type Recipe = TextRecipe | CartRecipe
@@ -42,8 +45,6 @@ export interface BackendMessage {
   content: string
   timestamp: number
   chatType: "general" | "recipe" | "cart"
-  recipeData?: Recipe | null
-  cartData?: Product[] | null
 }
 
 export interface ChatMessage {
