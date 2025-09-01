@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { ChefHat, Bookmark, BookmarkCheck, ShoppingCart, Plus } from "lucide-react"
+import { ChefHat, Bookmark, BookmarkCheck, ShoppingCart, Plus, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { UIRecipe } from "../src/types"
 import { backendFetch, searchIngredientAndAddToCart, addToCart } from "@/lib/api"
@@ -27,6 +27,7 @@ interface RecipeExplorationScreenProps {
   onAddProductToCart?: (cartRecipe: any) => void
   isRightSidebarOpen?: boolean
   currentChatId?: string | null
+  cartItems?: any[] // 장바구니 아이템 추가
 }
 
 export function RecipeExplorationScreen({
@@ -37,11 +38,26 @@ export function RecipeExplorationScreen({
   onAddProductToCart,
   isRightSidebarOpen = false,
   currentChatId,
+  cartItems = [], // 기본값 설정
 }: RecipeExplorationScreenProps) {
   const [selectedRecipeIndex, setSelectedRecipeIndex] = useState<number>(0)
   const [recipesWithDetails, setRecipesWithDetails] = useState<UIRecipe[]>(recipes)
 
   const selectedRecipe = recipesWithDetails[selectedRecipeIndex]
+
+  // 재료가 장바구니에 있는지 확인하는 함수
+  const isIngredientInCart = (ingredientName: string): boolean => {
+    return cartItems.some((item: any) => {
+      // cartItems의 구조에 따라 확인
+      if (item.food_name) {
+        return item.food_name === ingredientName
+      }
+      if (item.name) {
+        return item.name === ingredientName
+      }
+      return false
+    })
+  }
 
   // 레시피 상세 정보 로드
   const loadRecipeDetails = async (recipe: UIRecipe) => {
@@ -117,46 +133,46 @@ export function RecipeExplorationScreen({
       {/* Recipe List - Dynamic position based on sidebar state */}
       <div
         className={cn(
-          "fixed top-4 w-64 z-10 transition-all duration-300",
-          isRightSidebarOpen ? "right-84" : "right-16",
+          "fixed top-4 w-56 z-50 transition-all duration-300",
+          isRightSidebarOpen ? "right-[31rem]" : "right-16",
         )}
       >
         <Card className="shadow-lg">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ChefHat className="w-5 h-5" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ChefHat className="w-4 h-4" />
               Recipes ({recipes.length})
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3">
             {/* 레시피 리스트 전용 스크롤 */}
-            <ScrollArea className="h-[calc(100vh-10rem)] pr-2">
+            <ScrollArea className="h-[calc(100vh-12rem)] pr-1">
               <div className="space-y-2">
                 {recipes.map((recipe, index) => (
                   <div
                     key={index}
                     className={cn(
-                      "flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors",
+                      "flex items-center justify-between p-1.5 rounded-md cursor-pointer transition-colors",
                       selectedRecipeIndex === index
                         ? "bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-700"
                         : "hover:bg-gray-100 dark:hover:bg-gray-800",
                     )}
                     onClick={() => handleRecipeSelect(index)}
                   >
-                    <span className="text-sm font-medium truncate flex-1">{recipe.name}</span>
+                    <span className="text-xs font-medium truncate flex-1">{recipe.name}</span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="p-1 h-auto"
+                      className="p-0.5 h-6 w-6"
                       onClick={(e) => {
                         e.stopPropagation()
                         onBookmarkToggle(recipe.id)
                       }}
                     >
                       {bookmarkedRecipes.includes(recipe.id) ? (
-                        <BookmarkCheck className="w-4 h-4 text-blue-600" />
+                        <BookmarkCheck className="w-3 h-3 text-blue-600" />
                       ) : (
-                        <Bookmark className="w-4 h-4" />
+                        <Bookmark className="w-3 h-3" />
                       )}
                     </Button>
                   </div>
@@ -168,7 +184,7 @@ export function RecipeExplorationScreen({
       </div>
 
       {/* Main Recipe Content */}
-      <div className={cn("flex-1 p-6 transition-all duration-300", isRightSidebarOpen ? "pr-96" : "pr-84")}>
+      <div className={cn("flex-1 p-6 transition-all duration-300", isRightSidebarOpen ? "pr-[29rem]" : "pr-72")}>
         {selectedRecipe ? (
           <ScrollArea className="h-[calc(100vh-2rem)] pr-2">
             <div className="max-w-4xl mx-auto">
@@ -213,10 +229,10 @@ export function RecipeExplorationScreen({
                             </span>
                           </div>
                           <Button
-                            variant="outline"
+                            variant={isIngredientInCart(ingredient.name) ? "secondary" : "outline"}
                             size="sm"
                             onClick={async () => {
-                              if (currentChatId) {
+                              if (currentChatId && !isIngredientInCart(ingredient.name)) {
                                 try {
                                   const response = await addToCart({
                                     chatId: currentChatId,
@@ -250,14 +266,24 @@ export function RecipeExplorationScreen({
                                   console.error('장바구니 추가 실패:', error);
                                   // 에러 메시지 표시
                                 }
+                              } else if (isIngredientInCart(ingredient.name)) {
+                                console.log('이미 장바구니에 추가된 재료입니다:', ingredient.name);
                               } else {
                                 console.error('현재 채팅 ID가 없습니다.');
                               }
                             }}
-                            className="ml-2"
+                            className={cn(
+                              "ml-2",
+                              isIngredientInCart(ingredient.name) && "bg-green-50 border-green-200 text-green-700 hover:bg-green-50"
+                            )}
+                            disabled={isIngredientInCart(ingredient.name)}
                           >
-                                                        <Plus className="w-4 h-4 mr-1" />
-                            Add
+                            {isIngredientInCart(ingredient.name) ? (
+                              <Check className="w-4 h-4 mr-1 text-green-600" />
+                            ) : (
+                              <Plus className="w-4 h-4 mr-1" />
+                            )}
+                            {isIngredientInCart(ingredient.name) ? "Added" : "Add"}
                           </Button>
                         </div>
                       ))}
@@ -289,8 +315,8 @@ export function RecipeExplorationScreen({
           <div className="flex items-center justify-center h-full">
             <div className="text-center text-gray-500">
               <ChefHat className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p className="text-xl">No recipes available</p>
-              <p>Start a conversation to get recipe suggestions!</p>
+              <p className="text-xl">사용 가능한 레시피가 없습니다</p>
+              <p>대화를 시작하여 레시피 제안을 받아보세요!</p>
             </div>
           </div>
         )}

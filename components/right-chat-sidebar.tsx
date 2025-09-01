@@ -179,7 +179,7 @@ export function RightChatSidebar({
               {messages.length === 0 ? (
                 <div className="text-center text-gray-500 mt-8">
                   <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Start a conversation to get recipe suggestions!</p>
+                  <p>대화를 시작하여 레시피 제안을 받아보세요!</p>
                 </div>
               ) : (
                 <div className="space-y-4 pb-4">
@@ -207,7 +207,7 @@ export function RightChatSidebar({
                           />
                         )}
                         {msg.content && (
-                          <div className="whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-h-[40vh]">
+                          <div className="whitespace-pre-wrap break-words">
                             {msg.content}
                           </div>
                         )}
@@ -266,7 +266,7 @@ export function RightChatSidebar({
               <Input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Ask for recipes or ingredients..."
+                placeholder="레시피나 재료에 대해 물어보세요..."
                 className="flex-1"
                 disabled={isLoading}
               />

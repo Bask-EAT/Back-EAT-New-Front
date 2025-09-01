@@ -44,7 +44,7 @@ type ChatServiceResponse = {
 }
 
 export function useChat() {
-    const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart">("welcome")
+    const [currentView, setCurrentView] = useState<"welcome" | "recipe" | "cart" | "bookmark">("welcome")
     const [chatHistory, setChatHistory] = useState<UIChatSession[]>([])
     const [bookmarkedRecipes, setBookmarkedRecipes] = useState<string[]>([])
     // UUID 기반 채팅방 ID로 변경
@@ -530,6 +530,10 @@ export function useChat() {
                 console.log(`=== ${chatType} 타입 처리 시작 ===`);
                 console.log("현재 뷰:", currentView);
                 
+                // 새 채팅의 첫 메시지인지 확인 (사용자 메시지 추가 전 길이 기준)
+                const isFirstMessage = updatedMessages.length === 1;
+                console.log(`[CHAT] 새 채팅 첫 메시지 여부: ${isFirstMessage}`);
+                
                 // 7. 데이터 저장 - 백엔드에서 이미 저장했으므로 프론트엔드에서는 저장하지 않음
                 const finalChatId = returnedChatId || effectiveServerChatId || chatId;
                 console.log(`[CHAT] 백엔드에서 이미 메시지를 저장했으므로 프론트엔드 저장 생략: ${finalChatId}`);
@@ -645,7 +649,13 @@ export function useChat() {
                             
                         case "chat":
                             console.log("=== chat 타입 처리 ===");
-                            console.log("chat 타입 -> 화면 변화 없음, 현재 뷰 유지:", currentView);
+                            // chat 타입이지만 새 채팅의 첫 메시지인 경우 recipe 뷰로 이동
+                            if (isFirstMessage && currentView === "welcome") {
+                                console.log("chat 타입 + 새 채팅 첫 메시지 -> recipe 뷰로 자동 이동");
+                                setCurrentView("recipe");
+                            } else {
+                                console.log("chat 타입 -> 화면 변화 없음, 현재 뷰 유지:", currentView);
+                            }
                             break;
                             
                         default:
@@ -682,7 +692,13 @@ export function useChat() {
                         
                         console.log('[CHAT] 카트 아이템 UI 업데이트 완료 (백엔드에서 이미 저장됨)')
                     } else {
-                        setCurrentView("welcome");
+                        // 이전 스키마에서도 새 채팅의 첫 메시지인 경우 recipe 뷰로 이동
+                        if (updatedMessages.length === 1 && currentView === "welcome") {
+                            console.log("이전 스키마 + 새 채팅 첫 메시지 -> recipe 뷰로 자동 이동");
+                            setCurrentView("recipe");
+                        } else {
+                            setCurrentView("welcome");
+                        }
                     }
                     
                     const suggestions = extractNumberedSuggestions(parsedResponse.content);
@@ -822,7 +838,7 @@ export function useChat() {
 
 
     // 뷰 변경 핸들러
-    const handleViewChange = (view: "welcome" | "recipe" | "cart") => {
+    const handleViewChange = (view: "welcome" | "recipe" | "cart" | "bookmark") => {
         setCurrentView(view)
         setError(null)
     }

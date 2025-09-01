@@ -103,6 +103,7 @@ export default function HomePage() {
               onAddProductToCart={handleAddProductToCart}
               isRightSidebarOpen={!rightSidebarCollapsed}
               currentChatId={currentChatId}
+              cartItems={cartItems}
             />
           )}
           {currentView === "cart" && (

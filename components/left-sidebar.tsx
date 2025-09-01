@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { MessageSquarePlus, ChefHat, Menu, Bookmark, Moon, Sun, MessageSquare } from "lucide-react"
+import { MessageSquarePlus, ChefHat, Menu, Moon, Sun, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
 import type { ChatSession } from "../src/types"
@@ -29,7 +29,6 @@ export function LeftSidebar({
   onChatSelect,
 }: LeftSidebarProps) {
   const { theme, setTheme } = useTheme()
-  const [bookmarks] = useState<string[]>([]) // Will be implemented later
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -69,7 +68,7 @@ export function LeftSidebar({
           {!collapsed && (
             <div className="flex items-center gap-2">
               <ChefHat className="w-6 h-6 text-blue-600" />
-              <span className="font-bold text-lg text-foreground">Recipe AI</span>
+              <span className="font-bold text-lg text-foreground">Bask:EAT</span>
             </div>
           )}
           <Button variant="ghost" size="sm" onClick={onToggle} className="p-2">
@@ -90,7 +89,7 @@ export function LeftSidebar({
           {!collapsed && (
             <div className="mb-4">
               <h3 className="text-sm font-medium text-muted-foreground mb-2">Chat History</h3>
-              <ScrollArea className="h-48">
+              <ScrollArea className="h-80">
                 {chatHistory.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">No chats yet</p>
                 ) : (
@@ -107,30 +106,6 @@ export function LeftSidebar({
                         <div className="truncate text-sm">{chat.title}</div>
                         <div className="text-xs text-muted-foreground">{formatDate(chat.lastUpdated)}</div>
                       </div>
-                    </Button>
-                  ))
-                )}
-              </ScrollArea>
-            </div>
-          )}
-
-          {/* Bookmarks */}
-          {!collapsed && (
-            <div className="mb-4">
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">Recipe Bookmarks</h3>
-              <ScrollArea className="h-32">
-                {bookmarks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No bookmarks yet</p>
-                ) : (
-                  bookmarks.map((bookmark, index) => (
-                    <Button
-                      key={index}
-                      variant="ghost"
-                      className="w-full justify-start mb-1 text-left truncate"
-                      size="sm"
-                    >
-                      <Bookmark className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span className="truncate">{bookmark}</span>
                     </Button>
                   ))
                 )}
