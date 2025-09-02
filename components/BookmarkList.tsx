@@ -81,7 +81,7 @@ export function BookmarkList({
                     const recipe = bookmark.recipeData;
                     return (
                         <Card
-                            key={recipe.id}
+                            key={recipe?.id}
                             className="hover:shadow-md transition-shadow cursor-pointe"
                             onClick={() => setSelectedRecipe(recipe)} // 카드 클릭 시 모달 열기
                         >
@@ -91,11 +91,9 @@ export function BookmarkList({
                                         <CardTitle className="text-lg line-clamp-2">
                                             {recipe?.name}
                                         </CardTitle>
-                                        {recipe.description && (
                                             <CardDescription className="line-clamp-2 mt-2">
-                                                {recipe.description}
+                                                {recipe?.description}
                                             </CardDescription>
-                                        )}
                                     </div>
                                     <Button
                                         variant="ghost"

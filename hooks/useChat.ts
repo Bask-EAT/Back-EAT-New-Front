@@ -91,10 +91,10 @@ export function useChat() {
                 try {
                     console.log('[CHAT] getAllChatsDesc 호출 시작')
                     const chats = await getAllChatsDesc()
-                    console.log(`[CHAT] chat-service에서 로드된 채팅 수: ${chats.length}`)
-                    console.log('[CHAT] chat-service 응답:', chats)
-                    console.log('[CHAT] 응답 타입:', typeof chats)
-                    console.log('[CHAT] 응답 구조:', JSON.stringify(chats, null, 2))
+                    // console.log(`[CHAT] chat-service에서 로드된 채팅 수: ${chats.length}`)
+                    // console.log('[CHAT] chat-service 응답:', chats)
+                    // console.log('[CHAT] 응답 타입:', typeof chats)
+                    // console.log('[CHAT] 응답 구조:', JSON.stringify(chats, null, 2))
                     
                     // 채팅 목록이 비어있을 때의 처리
                     if (!chats || chats.length === 0) {
