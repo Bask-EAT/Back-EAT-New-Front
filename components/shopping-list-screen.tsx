@@ -112,18 +112,12 @@ export function ShoppingListScreen({
     }
 
     // cartItems 배열의 '가장 마지막' 요소만 사용해서 최신 검색 결과를 반영합니다.
-    const latestRecipeItem = cartItems[cartItems.length - 1];
-    console.log("🛒 cartItems 배열의 가장 마지막 요소(latestRecipeItem) --------", latestRecipeItem)
-    console.log("🛒 전체 cartItems:", cartItems)
-
-
-    // ✨ 수정: cartItems 배열 전체를 그룹으로 변환합니다.
-    // 백엔드 응답의 recipes 배열에 여러 객체가 있을 미래 상황을 대비합니다.
-    // cart 타입 데이터 구조에 맞게 처리
-    // 백엔드에서 오는 구조: recipes[0].ingredients에 상품 정보가 있음
+    // const latestRecipeItem = cartItems[cartItems.length - 1];
+    // console.log("🛒 cartItems 배열의 가장 마지막 요소(latestRecipeItem) --------", latestRecipeItem)
+    // console.log("🛒 전체 cartItems:", cartItems)
     
     const newGroups: CartItemGroup[] = cartItems.map((recipeItem: any) => {
-      console.log("🛒 ShoppingListScreen: recipeItem 처리 중:", recipeItem);
+      // console.log("🛒 ShoppingListScreen: recipeItem 처리 중:", recipeItem);
       
       // cart 타입일 때 상품 정보를 찾습니다
       let products: Product[] = [];
@@ -142,7 +136,7 @@ export function ShoppingListScreen({
         }
       }
       
-      console.log("🛒 최종 products:", products);
+      // console.log("🛒 최종 products:", products);
       
       return {
         ingredientName: recipeItem.food_name || "상품 검색 결과",
@@ -154,7 +148,21 @@ export function ShoppingListScreen({
     }).filter(group => group.products.length > 0); // 상품이 없는 그룹은 제외
 
     console.log("🛒 ShoppingListScreen: 새로운 cartItems로 그룹을 업데이트합니다.", newGroups);
-    setCartItemGroups(newGroups);
+    
+    // 2. 상태를 업데이트할 때, 이전 그룹과 새로운 그룹을 합칩니다.
+    setCartItemGroups(prevGroups => {
+      // 이전 그룹과 새로운 그룹을 합칩니다.
+      const allGroups = [...prevGroups, ...newGroups];
+
+      // Map을 사용하여 ingredientName 기준으로 중복을 제거하고 최신 데이터로 업데이트합니다.
+      const uniqueGroupsMap = new Map<string, CartItemGroup>();
+      allGroups.forEach(group => {
+        uniqueGroupsMap.set(group.ingredientName, group);
+      });
+
+      // Map의 값들을 다시 배열로 변환하여 최종 목록을 만듭니다.
+      return Array.from(uniqueGroupsMap.values());
+    });
 
   }, [cartItems])
 
