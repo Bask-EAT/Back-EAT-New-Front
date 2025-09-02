@@ -79,9 +79,11 @@ export function BookmarkList({
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {bookmarkedRecipes.map((bookmark) => {
                     const recipe = bookmark.recipeData;
+                    // 디버깅을 위한 로그 추가
+                    // console.log(`Bookmark ${index}:`, { id: bookmark.id, recipeId: recipe?.id });
                     return (
                         <Card
-                            key={recipe?.id}
+                            key={bookmark.id}
                             className="hover:shadow-md transition-shadow cursor-pointe"
                             onClick={() => setSelectedRecipe(recipe)} // 카드 클릭 시 모달 열기
                         >

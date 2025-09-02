@@ -128,6 +128,7 @@ export function useChat() {
                 try {
                     const bookmarks = await getAllBookmarkIds()
                     setBookmarkedRecipes(bookmarks)
+                    console.log("[CHAT] 북마크 로드 완료:", bookmarks)
                 } catch (bookmarkError) {
                     console.error('[CHAT] 북마크 로드 실패:', bookmarkError)
                     setBookmarkedRecipes([])
@@ -750,17 +751,31 @@ export function useChat() {
             
         (async () => {
             try {
-                const isCurrentlyBookmarked = bookmarkedRecipes.includes(recipeId);
+                // 💡 isCurrentlyBookmarked 로직도 객체 배열 기준으로 변경해야 합니다.
+                const isCurrentlyBookmarked = bookmarkedRecipes.some(b => b.id === recipeId)
                 
                 const toggled = await toggleBookmark(
                     recipe as unknown as DBRecipe,
                     isCurrentlyBookmarked
                 );
 
-                // 3. 이후 상태 업데이트 로직은 이전과 동일합니다.
-                setBookmarkedRecipes((prev) =>
-                    toggled ? [...new Set([...prev, recipeId])] : prev.filter((id) => id !== recipeId),
-                )
+                // ✨ 상태 업데이트 로직 수정
+                setBookmarkedRecipes((prev) => {
+                    if (toggled) {
+                        // [추가] recipe 객체를 Bookmark 객체 형태로 만들어 추가합니다.
+                        // 실제 Bookmark 타입에 맞게 필드를 채워주세요.
+                        const newBookmark: Bookmark = {
+                            id: recipe.id,
+                            userId: "현재_사용자_ID", // 이 부분은 실제 데이터로 채워야 합니다.
+                            timestamp: Date.now(),
+                            recipeData: recipe
+                        };
+                        return [...prev, newBookmark];
+                    } else {
+                        // [제거] bookmark 객체의 id를 기준으로 필터링합니다.
+                        return prev.filter((bookmark) => bookmark.id !== recipeId);
+                    }
+                })
             } catch (e: any) {
                 console.error(e)
                 setError(e?.message || "북마크 저장 실패")

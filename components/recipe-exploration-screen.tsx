@@ -168,7 +168,7 @@ export function RecipeExplorationScreen({
                         onBookmarkToggle(recipe.id)
                       }}
                     >
-                      {bookmarkedRecipes.includes(recipe.id) ? (
+                      {bookmarkedRecipes.some(bookmark => bookmark.id === recipe.id) ? (
                         <BookmarkCheck className="w-4 h-4 text-blue-600" />
                       ) : (
                         <Bookmark className="w-4 h-4" />
