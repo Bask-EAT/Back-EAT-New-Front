@@ -30,7 +30,7 @@ async function fetchWithAuth<T>(
 ): Promise<T> {
     const token = localStorage.getItem("jwtToken");
     // --- 디버깅용 코드 ---
-    console.log("🔍 [fetchWithAuth] localStorage에서 가져온 토큰:", token);
+    // console.log("🔍 [fetchWithAuth] localStorage에서 가져온 토큰:", token);
     // -------------------
     if (!token) {
         console.error(
@@ -91,10 +91,16 @@ export async function addBookmark(recipe: RecipeData): Promise<ApiResponse> {
         `✅ [API 서비스] /api/bookmarks POST 요청 시작 (레시피 ID: ${recipe.id})`
     );
     try {
-        return await fetchWithAuth<ApiResponse>("/api/bookmarks", {
+        const response = await fetchWithAuth<ApiResponse>("/api/bookmarks", {
             method: "POST",
             body: JSON.stringify(recipe),
         });
+        // --- ✨ 디버깅 코드 추가 ---
+        console.log("📥 [API 서비스] addBookmark 서버 응답 수신:", response);
+        // -------------------------
+
+        return response;
+        
     } catch (error) {
         console.error(
             "❌ [API 서비스] addBookmark 호출 중 심각한 오류 발생",
