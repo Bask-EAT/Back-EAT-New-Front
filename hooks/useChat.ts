@@ -15,6 +15,7 @@ import {
 } from "@/lib/chat-service"
 import {updateChatTitle, extractNumberedSuggestions, mapSelectionToDish, isNumericSelection} from "@/src/chat"
 import {postJson, postMultipart, getJson, searchIngredient} from "@/lib/api"
+import { getAuthHeaders } from "@/lib/auth"
 import { getUserBookmarks } from "@/lib/bookmark-service"
 import type { Bookmark } from "@/lib/bookmark-service"
 import { useToast } from "./use-toast"
@@ -211,7 +212,7 @@ export function useChat() {
             
             const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASE || "http://localhost:8080"}/api/users/me/chats/${chatId}`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    ...getAuthHeaders()
                 }
             })
             
@@ -427,7 +428,7 @@ export function useChat() {
             console.log('[CHAT] 백엔드에서 DB 히스토리를 조회하여 LLM에 전달 중...')
             console.log('[CHAT] 백엔드: 최근 15개 메시지로 제한하여 컨텍스트 생성')
             
-            const data = await postMultipart<any>(`${process.env.NEXT_PUBLIC_BACKEND_BASE || "http://localhost:8080"}/api/chat`, formData);
+            const data = await postMultipart<any>(`/api/chat`, formData);
             
             console.log('[CHAT] 백엔드 응답 받음:', data)
             console.log('[CHAT] 백엔드에서 DB 히스토리 조회 및 LLM 처리 완료')

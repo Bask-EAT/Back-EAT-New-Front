@@ -2,7 +2,7 @@
 
 import {getAuthHeaders} from "@/lib/auth"
 
-const BASE = process.env.NEXT_PUBLIC_BACKEND_BASE || "http://localhost:8080"
+export const BASE = process.env.NEXT_PUBLIC_BACKEND_BASE || "http://localhost:8080"
 
 export async function backendFetch(path: string, init: RequestInit = {}): Promise<Response> {
     const headers: HeadersInit = {
@@ -79,13 +79,10 @@ async function safeText(res: Response): Promise<string> {
 
 // ✨ FormData 전송 함수 (새로 추가)
 export async function postMultipart<T>(path: string, formData: FormData): Promise<T> {
-  const token = localStorage.getItem("jwtToken");
-  const headers: HeadersInit = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  
-  const res = await fetch(path, {
+  const headers: HeadersInit = getAuthHeaders();
+  const url = path.startsWith("http") ? path : `${BASE}${path}`;
+
+  const res = await fetch(url, {
     method: "POST",
     headers, // 인증 헤더 추가
     body: formData,

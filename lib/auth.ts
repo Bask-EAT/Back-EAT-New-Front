@@ -5,8 +5,15 @@ export function getJwt(): string | null {
 
 export function getAuthHeaders(): Record<string, string> {
     if (typeof window === "undefined") return {};
-    const token = localStorage.getItem("jwtToken");
-    return token ? {"Authorization": `Bearer ${token}`} : {};
+    const jwt = localStorage.getItem("jwtToken");
+    if (jwt && jwt.trim()) {
+        return { "Authorization": `Bearer ${jwt}` };
+    }
+    const firebaseIdToken = localStorage.getItem("firebaseIdToken");
+    if (firebaseIdToken && firebaseIdToken.trim()) {
+        return { "Authorization": `Bearer firebase-${firebaseIdToken}` };
+    }
+    return {};
 }
 
 // 중복 제거: 여기저기서 localStorage를 직접 읽고 헤더 붙이는 코드를 반복하지 않기 위해.
