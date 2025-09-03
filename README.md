@@ -90,14 +90,53 @@ pnpm install
 yarn install
 ```
 
-### 2. 환경 변수 설정
+### 2. next.config.mjs 설정
 
-프로젝트 루트에 `.env.local` 파일을 생성하고 다음 환경 변수를 설정하세요:
+프로젝트 루트의 `next.config.mjs` 파일에 백엔드 API URL을 설정하세요:
+
+```javascript
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  images: {
+    unoptimized: true,
+  },
+  env: {
+    NEXT_PUBLIC_BACKEND_BASE: process.env.NEXT_PUBLIC_BACKEND_BASE || 'http://localhost:8080',
+  },
+}
+
+export default nextConfig
+```
+
+### 3. 환경 변수 설정
+
+#### **백엔드 API URL 설정**
+`next.config.mjs` 파일에 백엔드 API 기본 URL을 설정해야 합니다:
+
+```javascript
+// next.config.mjs
+env: {
+  NEXT_PUBLIC_BACKEND_BASE: process.env.NEXT_PUBLIC_BACKEND_BASE || 'http://localhost:8080',
+}
+```
+
+또는 환경 변수로 설정할 수 있습니다:
+```bash
+export NEXT_PUBLIC_BACKEND_BASE=http://localhost:8080
+```
+
+**중요**: 레포지토리를 복제한 후 `next.config.mjs` 파일에 위 설정을 추가하지 않으면 백엔드 API 연결이 실패할 수 있습니다.
+
+#### **Firebase 설정**
+프로젝트 루트에 `.env.local` 파일을 생성하고 Firebase 설정을 추가하세요:
 
 ```bash
-# 백엔드 API 기본 URL
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
-
 # Firebase 설정
 NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
@@ -108,14 +147,14 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
 ```
 
-### 3. Firebase 프로젝트 설정
+### 4. Firebase 프로젝트 설정
 
 1. [Firebase Console](https://console.firebase.google.com/)에서 새 프로젝트 생성
 2. Authentication에서 Google 로그인 활성화
 3. Firestore Database 생성 및 보안 규칙 설정
 4. 프로젝트 설정에서 웹 앱 등록 및 설정 정보 복사
 
-### 4. 개발 서버 실행
+### 5. 개발 서버 실행
 
 ```bash
 # 개발 모드로 실행
@@ -128,7 +167,7 @@ pnpm dev
 yarn dev
 ```
 
-### 5. 브라우저에서 접속
+### 6. 브라우저에서 접속
 
 ```
 프론트엔드: http://localhost:3000
@@ -392,15 +431,15 @@ CMD ["npm", "start"]
 ```bash
 # 개발 환경
 NODE_ENV=development
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_BACKEND_BASE=http://localhost:8080
 
 # 스테이징 환경
 NODE_ENV=staging
-NEXT_PUBLIC_API_BASE_URL=https://staging-api.example.com
+NEXT_PUBLIC_BACKEND_BASE=https://staging-api.example.com
 
 # 프로덕션 환경
 NODE_ENV=production
-NEXT_PUBLIC_API_BASE_URL=https://api.example.com
+NEXT_PUBLIC_BACKEND_BASE=https://api.example.com
 ```
 
 ## 🐛 문제 해결
@@ -433,7 +472,10 @@ NEXT_PUBLIC_API_BASE_URL=https://api.example.com
    cat .env.local
    
    # 환경 변수 확인
-   echo $NEXT_PUBLIC_API_BASE_URL
+   echo $NEXT_PUBLIC_BACKEND_BASE
+   
+   # next.config.mjs 설정 확인
+   cat next.config.mjs
    ```
 
 ### **성능 최적화**
